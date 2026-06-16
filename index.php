@@ -76,6 +76,7 @@ if (subpage_active()) {
         $request_headers[] = 'x-forwarded-for: 127.0.0.1';
     }
     $request_headers[] = 'x-remnawave-real-ip: ' . client_ip();
+    $request_headers = panel_cookie_header($request_headers);
 }
 
 $grabbed_headers = [];
@@ -205,6 +206,22 @@ if ($decision === 'normal' && $short_uuid !== '' && squadconf_any()) {
         $u_cfgs = squadconf_for_squads($u_squads);
         if ($u_cfgs) $response = squadconf_inject($response, $format, $u_cfgs);
     }
+}
+
+if ($decision === 'normal' && $short_uuid !== '' && addsub_enabled()) {
+    try {
+        $addsub_src = addsub_resolve($short_uuid);
+        if ($addsub_src) {
+            [$addsub_body, $addsub_info] = addsub_fetch_body($addsub_src['url']);
+            if ($addsub_body !== null && $addsub_body !== '') {
+                if (addsub_traffic_exhausted($addsub_info)) {
+                    if (addsub_stub_on_traffic()) $response = addsub_inject_stub($response, $format, addsub_stub_label());
+                } else {
+                    $response = addsub_merge($response, $addsub_body, $format);
+                }
+            }
+        }
+    } catch (Throwable $e) { error_log('submw addsub: ' . $e->getMessage()); }
 }
 
 $unsafe = ['host', 'connection', 'transfer-encoding', 'content-length', 'content-encoding'];

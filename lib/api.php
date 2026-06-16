@@ -1,5 +1,15 @@
 <?php
 
+function panel_cookie_header(array $headers) {
+    $cookie = remnawave_cookie();
+    if ($cookie === '') return $headers;
+    foreach ($headers as $i => $h) {
+        if (stripos($h, 'cookie:') === 0) { $headers[$i] = rtrim($h, "; \t") . '; ' . $cookie; return $headers; }
+    }
+    $headers[] = 'Cookie: ' . $cookie;
+    return $headers;
+}
+
 function remnawave_api_get($path) {
     $base  = remnawave_url();
     $token = remnawave_token();
@@ -133,6 +143,18 @@ function remnawave_get_user_by_short($shortUuid, &$error = '') {
     [$ok, $code, $data, $e] = remnawave_api_request('GET', '/api/users/by-short-uuid/' . rawurlencode($shortUuid));
     if (!$ok) { $error = $e ?: ('HTTP ' . $code); return null; }
     $resp = $data['response'] ?? $data;
+    return is_array($resp) ? $resp : null;
+}
+
+function remnawave_get_user_by_username($username, &$error = '') {
+    $error = '';
+    $username = (string) $username;
+    if ($username === '') { $error = 'Пустой username'; return null; }
+    [$ok, $code, $data, $e] = remnawave_api_request('GET', '/api/users/by-username/' . rawurlencode($username));
+    if (!$ok) { $error = $e ?: ('HTTP ' . $code); return null; }
+    $resp = $data['response'] ?? $data;
+    if (is_array($resp) && isset($resp['users']) && is_array($resp['users'])) $resp = $resp['users'][0] ?? null;
+    elseif (is_array($resp) && isset($resp[0]) && is_array($resp[0])) $resp = $resp[0];
     return is_array($resp) ? $resp : null;
 }
 
