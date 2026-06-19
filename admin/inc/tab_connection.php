@@ -48,13 +48,23 @@
             </div>
             <div class="set-row" style="display:block">
                 <div class="set-info" style="margin-bottom:.65rem"><div class="set-t">Какие ключи извлекать</div><div class="set-d">Отмеченные заголовки берутся из User-Agent, когда настоящего заголовка в запросе нет.</div></div>
-                <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:.5rem">
+                <div class="uahk-grid">
                     <?php foreach ($ua_key_meta as $uk => $ud): ?>
-                        <label class="chk-field" style="align-items:flex-start;min-height:auto;padding:.6rem .75rem"><input type="checkbox" name="ua_hwid_keys[]" value="<?= h($uk) ?>" style="margin-top:.15rem" <?= in_array($uk, $ua_keys_now, true) ? 'checked' : '' ?>><span style="min-width:0"><code><?= h($uk) ?></code><span class="muted" style="display:block;font-size:.76rem;margin-top:.2rem;line-height:1.35"><?= h($ud) ?></span></span></label>
+                        <label class="uahk"><input type="checkbox" name="ua_hwid_keys[]" value="<?= h($uk) ?>" <?= in_array($uk, $ua_keys_now, true) ? 'checked' : '' ?>><span class="uahk-txt"><code><?= h($uk) ?></code><span class="muted"><?= h($ud) ?></span></span></label>
                     <?php endforeach; ?>
                 </div>
             </div>
             <div style="margin-top:1.25rem"><button type="submit">💾 Сохранить подключение</button></div>
         </form>
     </div>
+    <style>
+        .uahk-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:.5rem}
+        .uahk{display:flex;align-items:center;gap:.65rem;border:1px solid var(--line);background:var(--bg2);border-radius:10px;padding:.6rem .8rem;cursor:pointer;transition:border-color .15s}
+        .uahk:hover{border-color:var(--accent)}
+        .uahk input{appearance:none;-webkit-appearance:none;width:18px;height:18px;border:2px solid var(--line);border-radius:50%;flex:0 0 auto;margin:0;cursor:pointer;position:relative;transition:border-color .15s,background .15s}
+        .uahk input:checked{border-color:var(--accent);background:var(--accent)}
+        .uahk input:checked::after{content:"";position:absolute;left:50%;top:50%;width:6px;height:6px;border-radius:50%;background:var(--accent-text);transform:translate(-50%,-50%)}
+        .uahk-txt{min-width:0;display:flex;flex-direction:column;gap:.1rem;line-height:1.3}
+        .uahk-txt .muted{font-size:.76rem}
+    </style>
 
