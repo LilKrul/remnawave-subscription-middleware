@@ -62,19 +62,7 @@
     </section>
 
     <div class="card">
-        <div style="display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap">
-            <h2 style="margin:0;font-size:1rem">Добавленные конфиги (<?= count($sqcfg_list) ?>)</h2>
-            <?php if ($sqcfg_list): ?>
-            <label class="pgr-size">На странице:
-                <select id="sqcfgSize" onchange="SQCFGP.setSize(parseInt(this.value,10))">
-                    <option value="25">25</option>
-                    <option value="50">50</option>
-                    <option value="100">100</option>
-                    <option value="200">200</option>
-                </select>
-            </label>
-            <?php endif; ?>
-        </div>
+        <h2 style="margin-top:0;font-size:1rem">Добавленные конфиги (<?= count($sqcfg_list) ?>)</h2>
         <?php if (!$sqcfg_list): ?>
             <p class="muted">Пока пусто.</p>
         <?php else: $sqcfg_edit = []; ?>
@@ -118,7 +106,17 @@
             <?php endforeach; ?>
             </tbody>
         </table>
-        <div id="sqcfgPager" class="pgr-bot" style="margin-top:.8rem"></div>
+        <div class="sqcfg-pgr">
+            <label class="pgr-size">На странице:
+                <select id="sqcfgSize" onchange="SQCFGP.setSize(parseInt(this.value,10))">
+                    <option value="25">25</option>
+                    <option value="50">50</option>
+                    <option value="100">100</option>
+                    <option value="200">200</option>
+                </select>
+            </label>
+            <div id="sqcfgPager"></div>
+        </div>
         <?php endif; ?>
     </div>
 
@@ -379,6 +377,8 @@
         .wgpool-tbl td,.wgpool-tbl th{vertical-align:middle}
         .wgpool-tbl .sqcfg-sel{padding:.3rem 2rem .3rem .6rem;font-size:.82rem}
         .wgp-warn{color:var(--c-warn-fg);font-weight:700}
+        .sqcfg-pgr{display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap;margin-top:.85rem}
+        .sqcfg-pgr #sqcfgPager:empty{display:none}
     </style>
     <script>
     (function(){
@@ -453,7 +453,7 @@
     </script>
     <script>
     (function(){
-        var SIZES = [25, 50, 100, 200], size = 50, page = 1;
+        var SIZES = [25, 50, 100, 200], size = 25, page = 1;
         try { var s = parseInt(localStorage.getItem('sqcfg_size'), 10); if (SIZES.indexOf(s) > -1) size = s; } catch (e) {}
         function rows(){ var t = document.getElementById('sqcfgTbl'); if (!t || !t.tBodies.length) return []; return Array.prototype.slice.call(t.tBodies[0].rows); }
         function render(){
@@ -473,7 +473,7 @@
                 } else bot.innerHTML = '';
             }
         }
-        window.SQCFGP = { setSize: function(v){ if (SIZES.indexOf(v) < 0) v = 50; size = v; page = 1; try { localStorage.setItem('sqcfg_size', String(v)); } catch (e) {} render(); } };
+        window.SQCFGP = { setSize: function(v){ if (SIZES.indexOf(v) < 0) v = 25; size = v; page = 1; try { localStorage.setItem('sqcfg_size', String(v)); } catch (e) {} render(); } };
         var sel = document.getElementById('sqcfgSize'); if (sel) sel.value = String(size);
         render();
     })();
