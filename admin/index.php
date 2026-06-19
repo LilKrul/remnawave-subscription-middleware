@@ -754,18 +754,63 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && is_auth()) {
         $squads = array_values(array_filter(array_map('strval', (array) ($_POST['squads'] ?? [])), fn($s) => trim($s) !== ''));
         $raw   = (string) ($_POST['raw'] ?? '');
         $name  = trim($_POST['name'] ?? '');
+        $kind  = (($_POST['kind'] ?? 'simple') === 'wg') ? 'wg' : 'simple';
+        $ret   = (($_POST['ret'] ?? '') === 'wg_pool') ? 'wg_pool' : 'squad_configs';
         if (!$squads || $name === '' || trim($raw) === '') {
             flash('Выберите хотя бы один сквад, укажите метку и вставьте конфиг');
         } else {
             $parsed = squadconf_parse_any($raw);
+            $isWg = is_array($parsed) && in_array($parsed['type'] ?? '', ['wireguard', 'amneziawg'], true);
             if (!$parsed['ok']) {
                 flash('Конфиг не распознан: ' . (implode(' ', $parsed['warnings']) ?: 'неизвестный формат'));
+            } elseif ($kind === 'wg' && !$isWg) {
+                flash('Это не WG/AWG — добавьте во вкладке «Доп. конфиги»');
+            } elseif ($kind === 'simple' && $isWg) {
+                flash('Это WG/AWG — добавляйте во вкладке «WG / AWG»');
             } else {
                 squadconf_add($squads, $parsed['type'], $name, $raw, json_encode($parsed, JSON_UNESCAPED_UNICODE));
                 flash('Конфиг добавлен (' . squadconf_summary($parsed) . ')');
             }
         }
-        header('Location: index.php?tab=squad_configs'); exit();
+        header('Location: index.php?tab=' . $ret); exit();
+    }
+
+    if ($action === 'batch_wg_config') {
+        $squads = array_values(array_filter(array_map('strval', (array) ($_POST['squads'] ?? [])), fn($s) => trim($s) !== ''));
+        $prefix = trim($_POST['label_prefix'] ?? '');
+        $items = [];
+        if (!empty($_FILES['conf_files']) && is_array($_FILES['conf_files']['tmp_name'] ?? null)) {
+            foreach ($_FILES['conf_files']['tmp_name'] as $i => $tmp) {
+                if (!is_string($tmp) || !is_uploaded_file($tmp)) continue;
+                $raw = (string) file_get_contents($tmp);
+                if (trim($raw) === '') continue;
+                $fn  = (string) ($_FILES['conf_files']['name'][$i] ?? '');
+                $lbl = preg_replace('/\.[A-Za-z0-9]+$/', '', $fn);
+                $items[] = [trim((string) $lbl), $raw];
+            }
+        }
+        $rawb = (string) ($_POST['raw_batch'] ?? '');
+        if (trim($rawb) !== '') {
+            foreach (preg_split('/(?=\[Interface\])/i', $rawb) as $blk) {
+                if (trim($blk) !== '') $items[] = ['', $blk];
+            }
+        }
+        if (!$squads || !$items) {
+            flash('Выберите сквад и добавьте файлы или вставьте конфиги');
+        } else {
+            $added = 0; $skipped = 0; $auto = 0;
+            foreach ($items as $it) {
+                [$lbl, $raw] = $it;
+                $parsed = squadconf_parse_any($raw);
+                if (!is_array($parsed) || empty($parsed['ok']) || !in_array($parsed['type'] ?? '', ['wireguard', 'amneziawg'], true)) { $skipped++; continue; }
+                if ($lbl === '') { $auto++; $lbl = (($parsed['type'] === 'amneziawg') ? 'AWG' : 'WG') . ' ' . $auto; }
+                if ($prefix !== '') $lbl = $prefix . ' · ' . $lbl;
+                squadconf_add($squads, $parsed['type'], mb_substr($lbl, 0, 191), $raw, json_encode($parsed, JSON_UNESCAPED_UNICODE));
+                $added++;
+            }
+            flash('Добавлено WG/AWG: ' . $added . ($skipped ? (', пропущено (не WG/AWG или ошибка): ' . $skipped) : ''));
+        }
+        header('Location: index.php?tab=wg_pool'); exit();
     }
 
     if ($action === 'edit_squad_config') {
@@ -784,18 +829,18 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && is_auth()) {
                 flash('Конфиг обновлён (' . squadconf_summary($parsed) . ')');
             }
         }
-        header('Location: index.php?tab=squad_configs'); exit();
+        header('Location: index.php?tab=' . ((($_POST['ret'] ?? '') === 'wg_pool') ? 'wg_pool' : 'squad_configs')); exit();
     }
 
     if ($action === 'del_squad_config') {
         squadconf_delete((int) ($_POST['id'] ?? 0));
         flash('Конфиг удалён');
-        header('Location: index.php?tab=squad_configs'); exit();
+        header('Location: index.php?tab=' . ((($_POST['ret'] ?? '') === 'wg_pool') ? 'wg_pool' : 'squad_configs')); exit();
     }
 
     if ($action === 'toggle_squad_config') {
         squadconf_toggle((int) ($_POST['id'] ?? 0), ($_POST['enabled'] ?? '0') === '1');
-        header('Location: index.php?tab=squad_configs'); exit();
+        header('Location: index.php?tab=' . ((($_POST['ret'] ?? '') === 'wg_pool') ? 'wg_pool' : 'squad_configs')); exit();
     }
 
     if ($action === 'save_pool_modes') {
@@ -808,7 +853,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && is_auth()) {
         }
         set_setting('wgpool_reclaim_days', (string) max(1, (int) ($_POST['wgpool_reclaim_days'] ?? 14)));
         flash('Режимы пула сохранены');
-        header('Location: index.php?tab=squad_configs'); exit();
+        header('Location: index.php?tab=wg_pool'); exit();
     }
 
     if ($action === 'pool_manual_add') {
@@ -822,13 +867,13 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && is_auth()) {
             [$pok, $perr] = wglease_manual_add($sq, $cid, $su, $hw);
             flash($pok ? 'Ручная привязка добавлена' : ('Не удалось: ' . $perr));
         }
-        header('Location: index.php?tab=squad_configs'); exit();
+        header('Location: index.php?tab=wg_pool'); exit();
     }
 
     if ($action === 'pool_manual_del') {
         wglease_del((int) ($_POST['id'] ?? 0));
         flash('Привязка снята');
-        header('Location: index.php?tab=squad_configs'); exit();
+        header('Location: index.php?tab=wg_pool'); exit();
     }
 
     if ($action === 'save_addsub') {
@@ -944,15 +989,21 @@ if ($tab === 'subst' && remnawave_url() !== '' && remnawave_token() !== '') {
     $ext_squads   = remnawave_external_squads($ext_squads_err);
 }
 
-$sqcfg_squads = []; $sqcfg_squads_err = ''; $sqcfg_list = []; $sqcfg_names = [];
+$sqcfg_squads = []; $sqcfg_squads_err = ''; $sqcfg_names = [];
+$sqcfg_simple = []; $sqcfg_wg = [];
 $sqcfg_modes = []; $sqcfg_stock = []; $sqcfg_pool_cfgs = []; $sqcfg_leases = []; $sqcfg_reclaim_days = 14; $sqcfg_sizing = ['rows' => [], 'ts' => 0];
-if ($tab === 'squad_configs') {
+if ($tab === 'squad_configs' || $tab === 'wg_pool') {
     if (remnawave_url() !== '' && remnawave_token() !== '') $sqcfg_squads = remnawave_internal_squads($sqcfg_squads_err);
     foreach ($sqcfg_squads as $s) $sqcfg_names[$s['uuid']] = $s['name'];
-    $sqcfg_list = squadconf_all();
+    foreach (squadconf_all() as $c) {
+        if (in_array((string) ($c['type'] ?? ''), ['wireguard', 'amneziawg'], true)) $sqcfg_wg[] = $c;
+        else $sqcfg_simple[] = $c;
+    }
+}
+if ($tab === 'wg_pool') {
     $sqcfg_reclaim_days = wglease_reclaim_days();
     foreach ($sqcfg_squads as $s) $sqcfg_modes[$s['uuid']] = wglease_mode($s['uuid']);
-    foreach ($sqcfg_list as $c) {
+    foreach ($sqcfg_wg as $c) {
         if ((int) $c['enabled'] !== 1) continue;
         foreach (squadconf_squads_of($c) as $sq) {
             $sqcfg_stock[$sq] = ($sqcfg_stock[$sq] ?? 0) + 1;
@@ -967,7 +1018,7 @@ if ($tab === 'addsub') $addsub_list = addsub_map_all();
 $mirror        = mirror_domain();
 $wh_url        = ($mirror !== '' ? ('https://' . $mirror . '/webhook.php') : '/webhook.php');
 
-$tab_titles = ['users' => 'Пользователи', 'branding' => 'Брендинг', 'connection' => 'Подключение', 'webhooks' => 'Вебхуки', 'subst' => 'Грейс-сквад для истёкших', 'headers' => 'Заголовки приложений', 'rules' => 'Правила ответа по приложению', 'hwid' => 'HWID — заблокированные', 'overrides' => 'Оверрайды', 'reqlog' => 'Лог запросов', 'whlog' => 'Лог вебхуков · юзеры', 'whlog_other' => 'Лог вебхуков · прочее', 'fwdlog' => 'Лог пересылки', 'grace_users' => 'Грейс-юзеры', 'sysinfo' => 'О системе', 'update' => 'Обновление', 'migrate' => 'Миграция БД', 'chat' => 'Чат поддержки', 'squad_configs' => 'Доп. конфиги по скваду', 'addsub' => 'Слияние подписок'];
+$tab_titles = ['users' => 'Пользователи', 'branding' => 'Брендинг', 'connection' => 'Подключение', 'webhooks' => 'Вебхуки', 'subst' => 'Грейс-сквад для истёкших', 'headers' => 'Заголовки приложений', 'rules' => 'Правила ответа по приложению', 'hwid' => 'HWID — заблокированные', 'overrides' => 'Оверрайды', 'reqlog' => 'Лог запросов', 'whlog' => 'Лог вебхуков · юзеры', 'whlog_other' => 'Лог вебхуков · прочее', 'fwdlog' => 'Лог пересылки', 'grace_users' => 'Грейс-юзеры', 'sysinfo' => 'О системе', 'update' => 'Обновление', 'migrate' => 'Миграция БД', 'chat' => 'Чат поддержки', 'squad_configs' => 'Доп. конфиги (простые)', 'wg_pool' => 'WG / AWG конфиги', 'addsub' => 'Слияние подписок'];
 $tab_title  = $tab_titles[$tab] ?? 'Админка';
 $bc_now = json_decode((string) setting('brand_cache', '{}'), true);
 if (!is_array($bc_now)) $bc_now = [];
@@ -1073,6 +1124,7 @@ $nav = [
     'hwid'      => ['HWID', '<rect x="5" y="2" width="14" height="20" rx="2"/><line x1="9" y1="18" x2="15" y2="18"/><path d="M9 6h6M9 9h6"/>'],
     'overrides' => ['Оверрайды', '<path d="M12 3l7 3v5c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6z"/><path d="M9.5 12l1.8 1.8L15 9.8"/>'],
     'squad_configs' => ['Доп. конфиги', '<path d="M4 5h16v4H4z"/><path d="M4 13h16v6H4z"/><path d="M7 16h4"/><circle cx="17" cy="16" r="1"/>'],
+    'wg_pool'   => ['WG / AWG', '<path d="M3 12h3l2-6 4 12 2-6h7"/>'],
     'addsub'    => ['Слияние подписок', '<path d="M8 7a5 5 0 1 0 0 10"/><path d="M16 7a5 5 0 1 1 0 10"/><line x1="8" y1="12" x2="16" y2="12"/>'],
     'reqlog'    => ['Лог запросов', '<line x1="8" y1="6" x2="20" y2="6"/><line x1="8" y1="12" x2="20" y2="12"/><line x1="8" y1="18" x2="20" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/>'],
     'whlog'       => ['Юзер-лог', '<path d="M13 2L3 14h7l-1 8 10-12h-7z"/>'],
@@ -1091,7 +1143,7 @@ $nav_sections = [
     ['l' => 'Настройки',        'coll' => true,  'k' => 'set',    'items' => ['connection', 'branding']],
     ['l' => 'Вебхуки',          'coll' => true,  'k' => 'wh',     'items' => ['webhooks', 'fwdlog', 'whlog', 'whlog_other']],
     ['l' => 'Грейс',            'coll' => true,  'k' => 'grace',  'items' => ['subst', 'grace_users']],
-    ['l' => 'Доступ / подмена', 'coll' => true,  'k' => 'access', 'items' => ['rules', 'hwid', 'overrides', 'squad_configs', 'addsub']],
+    ['l' => 'Доступ / подмена', 'coll' => true,  'k' => 'access', 'items' => ['rules', 'hwid', 'overrides', 'squad_configs', 'wg_pool', 'addsub']],
     ['l' => 'Обслуживание',     'coll' => false, 'k' => 'maint',  'items' => ['sysinfo', 'update', 'migrate']],
 ];
 function nav_link($key, $it, $active, $badge = false) {
@@ -1175,6 +1227,8 @@ function nav_link($key, $it, $active, $badge = false) {
 
 <?php elseif ($tab === 'squad_configs'): ?>
     <?php include __DIR__ . '/inc/tab_squad_configs.php'; ?>
+<?php elseif ($tab === 'wg_pool'): ?>
+    <?php include __DIR__ . '/inc/tab_wg_pool.php'; ?>
 <?php elseif ($tab === 'addsub'): ?>
     <?php include __DIR__ . '/inc/tab_addsub.php'; ?>
 

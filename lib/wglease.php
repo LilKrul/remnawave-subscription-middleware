@@ -97,7 +97,11 @@ function wglease_select($short_uuid, $hwid, array $u_squads) {
         $mode = wglease_mode($sq);
         if ($mode === 'shared') continue;
         $cands = [];
-        foreach ($by_squad[$sq] ?? [] as $c) if (!isset($added[(int) $c['id']])) $cands[] = $c;
+        foreach ($by_squad[$sq] ?? [] as $c) {
+            if (isset($added[(int) $c['id']])) continue;
+            if ((string) ($c['type'] ?? '') === 'vless') { $added[(int) $c['id']] = true; $out[] = $c; }
+            else $cands[] = $c;
+        }
         if (!$cands) continue;
         if ($mode === 'devices') {
             if ($hwid === '') continue;
