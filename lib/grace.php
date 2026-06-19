@@ -140,7 +140,7 @@ function grace_on_expired($short, $username = null) {
     $strategy    = (string) ($u['trafficLimitStrategy'] ?? 'NO_RESET');
     $orig_expire = (string) ($u['expireAt'] ?? '');
     $hwid_orig   = array_key_exists('hwidDeviceLimit', $u) ? $u['hwidDeviceLimit'] : null;
-    $ext_orig    = (string) ($u['externalSquadUuid'] ?? '');
+    $ext_orig    = grace_external_active() ? (string) ($u['externalSquadUuid'] ?? '') : null;
     $grace_until = time() + grace_days() * 86400;
 
     grace_save($short, $uuid, $username, $squads, $bytes, $strategy, $orig_expire, $hwid_orig, $ext_orig, $grace_until);
