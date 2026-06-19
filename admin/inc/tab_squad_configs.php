@@ -266,7 +266,7 @@
                 <input type="hidden" name="csrf" value="<?= h($token) ?>">
                 <input type="hidden" name="action" value="save_pool_modes">
                 <table class="logtbl wgpool-tbl">
-                    <thead><tr><th>Сквад</th><th>Режим</th><th>В пуле</th><th>Активных / всего</th><th>Устройств</th><th>Потолок</th></tr></thead>
+                    <thead><tr><th>Сквад</th><th>Режим</th><th>В пуле</th><th>Учёток: актив. / всего</th><th>Добавлено (факт)</th><th>Макс по лимитам</th></tr></thead>
                     <tbody>
                     <?php foreach ($sqcfg_squads as $s): $pu = $s['uuid']; $pm = $sqcfg_modes[$pu] ?? 'shared'; ?>
                         <tr>
@@ -293,6 +293,9 @@
                         <input type="number" name="wgpool_reclaim_days" value="<?= (int) $sqcfg_reclaim_days ?>" min="1" max="365" style="width:5rem;box-sizing:border-box"> дн. неактивности</label>
                 </div>
                 <div id="wgpCalcMsg" class="muted" style="font-size:.8rem;margin-top:.5rem"></div>
+                <div class="muted" style="font-size:.78rem;line-height:1.6;margin-top:.7rem">
+                    <b>В пуле</b> — конфигов (слотов) в пуле сквада. <b>Учёток</b> — пользователей сквада: активных / всего. <b>Добавлено (факт)</b> — реально зарегистрировано устройств юзерами сквада, из базы hwid. <b>Макс по лимитам</b> — потолок: сумма лимитов устройств учёток (Σ hwidDeviceLimit), независимо от того, заняты слоты или нет; для учёток с отключённым лимитом — «Нет лимита».
+                </div>
             </form>
             <?php endif; ?>
         </div>
@@ -380,12 +383,15 @@
                 if (!r) { td.textContent = '0'; dd.textContent = '0'; cc.textContent = '0'; dd.classList.remove('wgp-warn'); return; }
                 td.textContent = (r.active || 0) + ' / ' + (r.users || 0);
                 dd.textContent = r.devices || 0;
-                var nn = r.limit_null || 0;
-                cc.innerHTML = (r.limit_sum || 0) + (nn ? (' <span class="muted">+' + nn + ' по умолч.</span>') : '');
+                var ls = r.limit_sum || 0, nl = r.nolimit || 0;
+                if (ls > 0 && nl > 0) cc.innerHTML = ls + ' <span class="muted">+' + nl + ' без лимита</span>';
+                else if (ls > 0) cc.textContent = ls;
+                else if (nl > 0) cc.innerHTML = '<span class="muted">Нет лимита</span>';
+                else cc.textContent = '0';
                 if (stock < (r.devices || 0)) dd.classList.add('wgp-warn'); else dd.classList.remove('wgp-warn');
             });
         }
-        var WGP_HINT = '«Устройств» — фактически из базы hwid; «Потолок» — сумма лимитов устройств. Красным — пул меньше потребности.';
+        var WGP_HINT = 'Добавлено — реальные hwid из базы; Макс по лимитам — сумма лимитов учёток. Красным — пул меньше факта.';
         var calc = document.getElementById('wgpCalc'), wgpMsg = document.getElementById('wgpCalcMsg');
         if (SIZING && Object.keys(SIZING).length) { wgpApply(SIZING); if (wgpMsg) wgpMsg.innerHTML = 'Последний расчёт: ' + wgpFmtAgo(SIZING_TS) + '. ' + WGP_HINT; }
         if (calc) {

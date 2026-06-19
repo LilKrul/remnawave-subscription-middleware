@@ -302,12 +302,13 @@ function wglease_sizing(&$err = '', &$warn = '', &$totals = null) {
         foreach ($squads as $sq) {
             $sid = is_array($sq) ? (string) ($sq['uuid'] ?? '') : '';
             if ($sid === '') continue;
-            if (!isset($out[$sid])) $out[$sid] = ['users' => 0, 'active' => 0, 'devices' => 0, 'limit_sum' => 0, 'limit_null' => 0];
+            if (!isset($out[$sid])) $out[$sid] = ['users' => 0, 'active' => 0, 'devices' => 0, 'limit_sum' => 0, 'nolimit' => 0];
             $out[$sid]['users']++;
             if ($active) $out[$sid]['active']++;
             $out[$sid]['devices'] += $dev;
-            if ($lim === null || $lim === '') $out[$sid]['limit_null']++;
-            else $out[$sid]['limit_sum'] += (int) $lim;
+            $li = ($lim === null || $lim === '') ? 0 : (int) $lim;
+            if ($li <= 0) $out[$sid]['nolimit']++;
+            else $out[$sid]['limit_sum'] += $li;
         }
     }
     return $out;
