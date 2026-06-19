@@ -66,7 +66,7 @@
             <h2>Добавленные конфиги (<?= count($sqcfg_list) ?>)</h2>
             <?php if ($sqcfg_list): ?>
             <div class="loghead-r">
-                <label class="pgr-size">На странице:
+                <label class="pgr-size" style="display:inline-flex;align-items:center;gap:.4rem;margin:0;font-weight:400">На странице:
                     <select id="sqcfgSize" onchange="SQCFGP.setSize(parseInt(this.value,10))">
                         <option value="25">25</option>
                         <option value="50">50</option>
