@@ -257,6 +257,8 @@
         </button>
         <div class="coll-body">
             <p class="muted" style="margin-top:0">Как раздаются конфиги каждого сквада. «Потребность» считается по панели: фактические устройства из базы hwid и потолок по лимиту устройств.</p>
+            <?php $wgpT0 = $sqcfg_sizing['totals'] ?? ['records' => 0, 'unique' => 0]; ?>
+            <div id="wgpTotals" class="muted" style="font-size:.82rem;margin:.2rem 0 .8rem">Всего регистраций устройств: <b id="wgpTotRec"><?= (int) $wgpT0['records'] ?></b> · уникальных hwid: <b id="wgpTotUniq"><?= (int) $wgpT0['unique'] ?></b></div>
             <?php if (!$sqcfg_squads): ?>
                 <div class="warn">Сквады не получены — настройте подключение к панели.</div>
             <?php else: ?>
@@ -367,29 +369,40 @@
     (function(){
         var NAMES = <?= json_encode($sqcfg_names, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
         var POOL = <?= json_encode($sqcfg_pool_cfgs ?? [], JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
-        var calc = document.getElementById('wgpCalc');
-        if (calc) {
-            calc.addEventListener('click', function(){
-                var msg = document.getElementById('wgpCalcMsg'); msg.textContent = 'Считаю по панели…'; calc.disabled = true;
-                fetch('?ajax=pool_sizing').then(function(r){ return r.json(); }).then(function(d){
-                    calc.disabled = false;
-                    if (!d.ok) { msg.textContent = 'Ошибка: ' + (d.error || 'нет данных'); return; }
-                    msg.textContent = '«Устройств» — фактически из базы hwid; «Потолок» — сумма лимитов устройств. Красным — пул меньше потребности.';
-                    document.querySelectorAll('.wgp-u').forEach(function(td){
-                        var row = td.parentNode, su = td.dataset.su, r = (d.rows || {})[su];
-                        var dd = row.querySelector('.wgp-d'), cc = row.querySelector('.wgp-c');
-                        var stock = parseInt((row.children[2] || {}).textContent || '0', 10);
-                        if (!r) { td.textContent = '0'; dd.textContent = '0'; cc.textContent = '0'; return; }
-                        td.textContent = (r.active || 0) + ' / ' + (r.users || 0);
-                        dd.textContent = r.devices || 0;
-                        var nn = r.limit_null || 0;
-                        cc.innerHTML = (r.limit_sum || 0) + (nn ? (' <span class="muted">+' + nn + ' по умолч.</span>') : '');
-                        if (stock < (r.devices || 0)) dd.classList.add('wgp-warn'); else dd.classList.remove('wgp-warn');
-                    });
-                }).catch(function(){ calc.disabled = false; msg.textContent = 'Ошибка запроса'; });
+        var SIZING = <?= json_encode($sqcfg_sizing['rows'] ?? [], JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
+        var SIZING_TS = <?= (int) ($sqcfg_sizing['ts'] ?? 0) ?>;
+        function wgpFmtAgo(ts){ if(!ts) return ''; var s=Math.max(0,Math.floor(Date.now()/1000-ts)); if(s<60) return 'только что'; if(s<3600) return Math.floor(s/60)+' мин назад'; if(s<86400) return Math.floor(s/3600)+' ч назад'; return Math.floor(s/86400)+' дн назад'; }
+        function wgpApply(rows){
+            document.querySelectorAll('.wgp-u').forEach(function(td){
+                var row = td.parentNode, su = td.dataset.su, r = (rows || {})[su];
+                var dd = row.querySelector('.wgp-d'), cc = row.querySelector('.wgp-c');
+                var stock = parseInt((row.children[2] || {}).textContent || '0', 10);
+                if (!r) { td.textContent = '0'; dd.textContent = '0'; cc.textContent = '0'; dd.classList.remove('wgp-warn'); return; }
+                td.textContent = (r.active || 0) + ' / ' + (r.users || 0);
+                dd.textContent = r.devices || 0;
+                var nn = r.limit_null || 0;
+                cc.innerHTML = (r.limit_sum || 0) + (nn ? (' <span class="muted">+' + nn + ' по умолч.</span>') : '');
+                if (stock < (r.devices || 0)) dd.classList.add('wgp-warn'); else dd.classList.remove('wgp-warn');
             });
         }
-        var sqSel = document.getElementById('wgm_squad'), cfgSel = document.getElementById('wgm_cfg');
+        var WGP_HINT = '«Устройств» — фактически из базы hwid; «Потолок» — сумма лимитов устройств. Красным — пул меньше потребности.';
+        var calc = document.getElementById('wgpCalc'), wgpMsg = document.getElementById('wgpCalcMsg');
+        if (SIZING && Object.keys(SIZING).length) { wgpApply(SIZING); if (wgpMsg) wgpMsg.innerHTML = 'Последний расчёт: ' + wgpFmtAgo(SIZING_TS) + '. ' + WGP_HINT; }
+        if (calc) {
+            calc.addEventListener('click', function(){
+                if (wgpMsg) wgpMsg.textContent = 'Считаю по панели…'; calc.disabled = true;
+                fetch('?ajax=pool_sizing').then(function(r){ return r.json(); }).then(function(d){
+                    calc.disabled = false;
+                    if (!d.ok) { if (wgpMsg) wgpMsg.textContent = 'Ошибка: ' + (d.error || 'нет данных'); return; }
+                    wgpApply(d.rows);
+                    if (d.totals) { var tr = document.getElementById('wgpTotRec'), tu = document.getElementById('wgpTotUniq'); if (tr) tr.textContent = d.totals.records || 0; if (tu) tu.textContent = d.totals.unique || 0; }
+                    var extra = d.warn ? (' <span class="wgp-warn">hwid-эндпоинт: ' + d.warn + '</span>') : '';
+                    if (wgpMsg) wgpMsg.innerHTML = 'Рассчитано только что. ' + WGP_HINT + extra;
+                }).catch(function(){ calc.disabled = false; if (wgpMsg) wgpMsg.textContent = 'Ошибка запроса'; });
+            });
+        }
+
+                var sqSel = document.getElementById('wgm_squad'), cfgSel = document.getElementById('wgm_cfg');
         function fillCfg(){
             if (!cfgSel) return;
             var sq = sqSel.value; cfgSel.innerHTML = '<option value="">—</option>';

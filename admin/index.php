@@ -461,9 +461,11 @@ if (isset($_GET['ajax']) && is_auth()) {
     }
 
     if ($a === 'pool_sizing') {
-        $perr = '';
-        $rows = wglease_sizing($perr);
-        echo json_encode(['ok' => $perr === '', 'error' => $perr, 'rows' => $rows], JSON_UNESCAPED_UNICODE);
+        $perr = ''; $pwarn = ''; $ptot = null;
+        $rows = wglease_sizing($perr, $pwarn, $ptot);
+        if ($perr === '') wglease_sizing_save($rows, $ptot);
+        $sc = wglease_sizing_cached();
+        echo json_encode(['ok' => $perr === '', 'error' => $perr, 'warn' => $pwarn, 'rows' => $rows, 'ts' => $sc['ts'], 'totals' => $sc['totals']], JSON_UNESCAPED_UNICODE);
         exit();
     }
 
@@ -938,7 +940,7 @@ if ($tab === 'subst' && remnawave_url() !== '' && remnawave_token() !== '') {
 }
 
 $sqcfg_squads = []; $sqcfg_squads_err = ''; $sqcfg_list = []; $sqcfg_names = [];
-$sqcfg_modes = []; $sqcfg_stock = []; $sqcfg_pool_cfgs = []; $sqcfg_leases = []; $sqcfg_reclaim_days = 14;
+$sqcfg_modes = []; $sqcfg_stock = []; $sqcfg_pool_cfgs = []; $sqcfg_leases = []; $sqcfg_reclaim_days = 14; $sqcfg_sizing = ['rows' => [], 'ts' => 0];
 if ($tab === 'squad_configs') {
     if (remnawave_url() !== '' && remnawave_token() !== '') $sqcfg_squads = remnawave_internal_squads($sqcfg_squads_err);
     foreach ($sqcfg_squads as $s) $sqcfg_names[$s['uuid']] = $s['name'];
@@ -953,6 +955,7 @@ if ($tab === 'squad_configs') {
         }
     }
     $sqcfg_leases = wglease_list();
+    $sqcfg_sizing = wglease_sizing_cached();
 }
 $addsub_list = [];
 if ($tab === 'addsub') $addsub_list = addsub_map_all();

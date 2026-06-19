@@ -271,19 +271,25 @@ function wglease_purge_user($short_uuid) {
     catch (Throwable $e) {}
 }
 
-function wglease_sizing(&$err = '') {
+function wglease_sizing(&$err = '', &$warn = '', &$totals = null) {
     $err = '';
+    $warn = '';
+    $totals = ['records' => 0, 'unique' => 0];
     if (remnawave_url() === '' || remnawave_token() === '') { $err = 'Нет подключения к панели'; return []; }
     $users = remnawave_all_users($err);
     if ($err !== '') return [];
     $te = '';
-    $top = remnawave_hwid_top_users($te);
-    $dev_by_user = [];
-    foreach ($top as $t) {
-        if (!is_array($t)) continue;
-        $uu = (string) ($t['userUuid'] ?? '');
-        if ($uu !== '') $dev_by_user[$uu] = (int) ($t['devicesCount'] ?? 0);
+    $devices = remnawave_hwid_all_devices($te);
+    $warn = $te;
+    $dev_by_user = []; $uniq_hwid = [];
+    foreach ($devices as $d) {
+        if (!is_array($d)) continue;
+        $uu = (string) ($d['userUuid'] ?? '');
+        if ($uu !== '') $dev_by_user[$uu] = ($dev_by_user[$uu] ?? 0) + 1;
+        $hh = (string) ($d['hwid'] ?? '');
+        if ($hh !== '') $uniq_hwid[$hh] = 1;
     }
+    $totals = ['records' => count($devices), 'unique' => count($uniq_hwid)];
     $out = [];
     foreach ($users as $u) {
         if (!is_array($u)) continue;
@@ -305,4 +311,20 @@ function wglease_sizing(&$err = '') {
         }
     }
     return $out;
+}
+
+function wglease_sizing_save($rows, $totals = null) {
+    set_setting('wgpool_sizing_cache', json_encode(is_array($rows) ? $rows : [], JSON_UNESCAPED_UNICODE));
+    set_setting('wgpool_sizing_totals', json_encode(is_array($totals) ? $totals : ['records' => 0, 'unique' => 0], JSON_UNESCAPED_UNICODE));
+    set_setting('wgpool_sizing_ts', (string) time());
+}
+
+function wglease_sizing_cached() {
+    $j = (string) setting('wgpool_sizing_cache', '');
+    $rows = $j !== '' ? json_decode($j, true) : [];
+    if (!is_array($rows)) $rows = [];
+    $tj = (string) setting('wgpool_sizing_totals', '');
+    $tot = $tj !== '' ? json_decode($tj, true) : [];
+    if (!is_array($tot)) $tot = [];
+    return ['rows' => $rows, 'ts' => (int) setting('wgpool_sizing_ts', '0'), 'totals' => ['records' => (int) ($tot['records'] ?? 0), 'unique' => (int) ($tot['unique'] ?? 0)]];
 }
