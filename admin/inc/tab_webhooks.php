@@ -1,12 +1,16 @@
-    <div class="card">
-        <h2 style="margin-top:0;font-size:1rem">Как включить вебхук в Remnawave <button type="button" class="qh" onclick="help('webhook_env')" aria-label="Справка">?</button></h2>
-        <p class="muted">Добавьте эти строки в <code>.env</code> панели и перезапустите её:</p>
-        <pre>WEBHOOK_ENABLED=true
+    <section class="coll" data-coll="wh_env">
+        <button type="button" class="coll-head" onclick="collToggle(this)"><span>Как включить вебхук в Remnawave</span>
+            <span class="coll-hr"><svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></span>
+        </button>
+        <div class="coll-body">
+            <p class="muted">Добавьте эти строки в <code>.env</code> панели и перезапустите её: <button type="button" class="qh" onclick="help('webhook_env')" aria-label="Справка">?</button></p>
+            <pre>WEBHOOK_ENABLED=true
 WEBHOOK_URL=<?= h($wh_url) ?>
 
 WEBHOOK_SECRET_HEADER=<?= h(webhook_secret() ?: '<секрет из «Подключения»>') ?></pre>
-        <p class="muted">После перезапуска события появятся в «Логе вебхуков» с подписью <span class="tag normal">ok</span>.</p>
-    </div>
+            <p class="muted">После перезапуска события появятся в «Логе вебхуков» с подписью <span class="tag normal">ok</span>.</p>
+        </div>
+    </section>
 
     <style>
         .fwd-row{display:grid;grid-template-columns:1fr 2fr 1.4fr auto auto;gap:.6rem;align-items:center;margin-bottom:.55rem}

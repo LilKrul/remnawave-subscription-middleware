@@ -48,9 +48,19 @@
     })();
     (function(){
         function sync(cb){ var l = cb.closest('.sq-item'); if(l) l.classList.toggle('on', cb.checked); }
-        document.querySelectorAll('.sq-grid input[type=checkbox]').forEach(function(cb){
-            sync(cb);
-            cb.addEventListener('change', function(){ sync(cb); });
+        document.querySelectorAll('.sq-grid').forEach(function(grid){
+            var manual = grid.querySelector('input[type=checkbox][value="__manual__"]');
+            grid.querySelectorAll('input[type=checkbox]').forEach(function(cb){
+                sync(cb);
+                cb.addEventListener('change', function(){
+                    if(manual){
+                        if(cb === manual){
+                            if(cb.checked) grid.querySelectorAll('input[type=checkbox]').forEach(function(o){ if(o !== manual && o.checked){ o.checked = false; sync(o); } });
+                        } else if(cb.checked && manual.checked){ manual.checked = false; sync(manual); }
+                    }
+                    sync(cb);
+                });
+            });
         });
         document.querySelectorAll('.sq-search').forEach(function(inp){
             inp.addEventListener('input', function(){

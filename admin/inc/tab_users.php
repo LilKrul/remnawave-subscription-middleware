@@ -65,11 +65,11 @@ $ico_eyeoff = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke
                 $nl = ($su !== '' && isset($nolog_set[$su]));
             ?>
             <tr data-su="<?= h($su) ?>">
-                <td class="u-name"><?= h($un) ?></td>
+                <td class="u-name<?= $un !== '' ? ' u-copy' : '' ?>"<?= $un !== '' ? ' data-copy="' . h($un) . '" title="Нажмите, чтобы скопировать имя" onclick="copyText(this,\'Имя пользователя скопировано\')"' : '' ?>><?= h($un) ?></td>
                 <td data-label="Статус"><?php if ($in_grace): ?><span class="tag grace"><span class="d"></span>ГРЕЙС</span><?php else: ?><span class="tag <?= h($st) ?>"><span class="d"></span><?= h($st) ?></span><?php endif; ?></td>
                 <td data-label="Истекает" class="muted"<?= $exp_ts !== null ? ' data-ets="' . (int) $exp_ts . '"' : '' ?>><?= h($exp) ?></td>
                 <td data-label="Конфиг"><span class="tag src-<?= h($src) ?>"><?= h($src_label) ?></span></td>
-                <td data-label="Ссылка подписки"><?php if ($mirror_link !== ''): ?><input class="sublink" type="text" readonly value="<?= h($mirror_link) ?>" title="Нажмите, чтобы скопировать" onclick="subCopy(this)"><?php else: ?><span class="muted">—</span><?php endif; ?></td>
+                <td data-label="Ссылка подписки"><?php if ($mirror_link !== ''): ?><span class="sublink-copy" data-copy="<?= h($mirror_link) ?>" title="Нажмите, чтобы скопировать ссылку" onclick="copyText(this,'Ссылка скопирована')"><?= h($mirror_link) ?></span><?php else: ?><span class="muted">—</span><?php endif; ?></td>
                 <td data-label="Действия" class="u-actions">
                     <?php if ($uuid !== '' || $su !== ''): ?>
                     <div class="actcell">
@@ -157,7 +157,10 @@ $ico_eyeoff = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke
         #utbl .u-name{color:var(--text-strong);font-weight:600}
         #utbl .tag{display:inline-flex;align-items:center;gap:.3rem}
         #utbl .tag .d{width:6px;height:6px;border-radius:50%;background:currentColor;flex:0 0 auto}
-        #utbl .sublink{font-family:monospace}
+        #utbl .u-name.u-copy{cursor:copy}
+        #utbl .u-name.u-copy:hover{color:var(--accent-text);text-decoration:underline}
+        #utbl .sublink-copy{font-family:monospace;cursor:copy;display:inline-block;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;vertical-align:middle;color:var(--text)}
+        #utbl .sublink-copy:hover{color:var(--accent-text);text-decoration:underline}
         #utbl .u-actions{white-space:nowrap}
         .actcell{display:flex;gap:.4rem;align-items:center;flex-wrap:wrap}
         .nolog-btn.on{border-color:var(--c-warn-fg);color:var(--c-warn-fg)}
@@ -178,7 +181,7 @@ $ico_eyeoff = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke
             #utbl tbody td.u-name::before{display:none}
             #utbl tbody td[data-label="Ссылка подписки"]{display:block}
             #utbl tbody td[data-label="Ссылка подписки"]::before{display:block;margin-bottom:.3rem}
-            #utbl .sublink{width:100%}
+            #utbl .sublink-copy{display:block;max-width:100%}
             #utbl tbody td.u-actions{justify-content:flex-start}
         }
         .btn-sm{background:transparent;border:1px solid var(--line);color:var(--text);border-radius:8px;padding:.42rem .8rem;font-size:.82rem;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:.35rem;white-space:nowrap}
@@ -286,13 +289,14 @@ $ico_eyeoff = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke
             var i=0; (function next(){ if(i>=list.length){ hwLoad(); return; } hwDelReq(list[i++]).then(next).catch(next); })();
         }, 'Удалить все', true);
     }
-    function subCopy(el){
-        if(!el.value) return;
-        el.focus(); el.select(); el.setSelectionRange(0, el.value.length);
-        var done=function(){ if(window.uiToast) uiToast('Ссылка скопирована'); };
+    function legacyCopy(v){ try{var ta=document.createElement('textarea');ta.value=v;ta.style.position='fixed';ta.style.opacity='0';document.body.appendChild(ta);ta.focus();ta.select();document.execCommand('copy');document.body.removeChild(ta);}catch(e){} }
+    function copyText(el,msg){
+        var v=(el.getAttribute('data-copy')||'').trim();
+        if(!v) return;
+        var done=function(){ if(window.uiToast) uiToast(msg||'Скопировано'); };
         if(navigator.clipboard && navigator.clipboard.writeText){
-            navigator.clipboard.writeText(el.value).then(done).catch(function(){ try{document.execCommand('copy');}catch(e){} done(); });
-        } else { try{document.execCommand('copy');}catch(e){} done(); }
+            navigator.clipboard.writeText(v).then(done).catch(function(){ legacyCopy(v); done(); });
+        } else { legacyCopy(v); done(); }
     }
     function filterRows(){ if(window.UTBL) UTBL.reset(); }
     var uSort={col:-1,dir:1};

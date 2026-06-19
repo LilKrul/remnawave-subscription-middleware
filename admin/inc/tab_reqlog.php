@@ -27,7 +27,7 @@
                 $uname = ($su !== '' && isset($short2name[$su])) ? $short2name[$su] : '';
             ?>
             <tr>
-                <td class="muted rl-time" data-ts="<?= (int) ($r['ts_epoch'] ?? 0) ?>"><?= h($r['ts']) ?></td>
+                <td class="muted rl-time" data-ts="<?= (int) ($r['ts_epoch'] ?? 0) ?>" data-dup="<?= (int) ($r['dup'] ?? 1) ?>"><?= h($r['ts']) ?><?php if ((int) ($r['dup'] ?? 1) > 1): ?> (<?= (int) $r['dup'] ?> <?= reqlog_plural((int) $r['dup']) ?>)<?php endif; ?></td>
                 <td><?php $dec=(string)$r['decision']; $rhw=(string)($r['hwid'] ?? ''); if ($dec==='blocked' && $rhw!==''): $dev=$hwid2info[mb_strtolower($rhw)] ?? ''; ?><span class="tag blocked rl-tip" data-tip="HWID: <?= h($rhw) ?><?= $dev!=='' ? ' · '.h($dev) : '' ?>">HWID blocked</span><?php elseif ($dec==='grace'): ?><span class="tag normal">normal <span style="opacity:.6">(грейс)</span></span><?php else: ?><span class="tag <?= h($dec) ?>"><?= h($dec) ?></span><?php endif; ?></td>
                 <td><?php if ($uname !== ''): ?><?= h($uname) ?><?php elseif ($su !== ''): ?><code><?= h($su) ?></code><?php else: ?><span class="muted">—</span><?php endif; ?></td>
                 <td><?= h($r['ip']) ?></td>
@@ -62,6 +62,7 @@
     }
     function rlExpire(ts){ if(!ts) return '—'; var d=new Date(ts*1000); function p(n){return (n<10?'0':'')+n;}
         return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate())+' '+p(d.getHours())+':'+p(d.getMinutes()); }
+    function rlPlural(n){ n=Math.abs(n)%100; var n1=n%10; if(n>10&&n<20) return 'обновлений'; if(n1===1) return 'обновление'; if(n1>1&&n1<5) return 'обновления'; return 'обновлений'; }
     function rlRender(rows){
         var b=document.getElementById('rlBody'); if(!b) return;
         if(!rows.length){ b.innerHTML='<tr><td colspan="6" class="muted">Пусто</td></tr>'; return; }
@@ -69,7 +70,9 @@
             var su=r.short_uuid||'', name=(su && RL_NAMES[su])?RL_NAMES[su]:'';
             var who=name?rlEsc(name):(su?'<code>'+rlEsc(su)+'</code>':'<span class="muted">—</span>');
             var dec=r.decision||'normal';
-            return '<tr><td class="muted">'+(r.ts_epoch?rlLocal(r.ts_epoch):rlEsc(r.ts))+'</td>'+
+            var tcell=(r.ts_epoch?rlLocal(r.ts_epoch):rlEsc(r.ts)), dup=parseInt(r.dup,10)||1;
+            if(dup>1) tcell+=' ('+dup+' '+rlPlural(dup)+')';
+            return '<tr><td class="muted">'+tcell+'</td>'+
                    '<td>'+rlDecCell(dec,r.hwid||'')+'</td>'+
                    '<td>'+who+'</td><td>'+rlEsc(r.ip)+'</td>'+
                    '<td class="muted">'+rlExpire(r.expire_ts)+'</td>'+
@@ -84,7 +87,7 @@
             if(a) a.textContent='· обновлено в '+new Date().toLocaleTimeString();
         }).catch(function(){ if(a) a.textContent='· ошибка обновления'; });
     }
-    document.querySelectorAll('.rl-time[data-ts]').forEach(function(td){var v=rlLocal(td.getAttribute('data-ts'));if(v)td.textContent=v;});
+    document.querySelectorAll('.rl-time[data-ts]').forEach(function(td){var v=rlLocal(td.getAttribute('data-ts'));if(!v)return;var dup=parseInt(td.getAttribute('data-dup'),10)||1;if(dup>1)v+=' ('+dup+' '+rlPlural(dup)+')';td.textContent=v;});
     document.querySelectorAll('.rl-exp[data-ts]').forEach(function(td){td.textContent=rlExpire(parseInt(td.getAttribute('data-ts'),10));});
     setInterval(function(){ if(!document.hidden) rlRefresh(); }, 10000);
     document.addEventListener('visibilitychange',function(){ if(!document.hidden) rlRefresh(); });

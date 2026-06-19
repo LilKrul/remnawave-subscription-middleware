@@ -41,7 +41,7 @@
                     <div>
                         <label for="sqcfg_name">Метка</label>
                         <input type="text" id="sqcfg_name" name="name" class="sqcfg-flag" placeholder="напр.: Нидерланды · VLESS" maxlength="191" required style="width:100%;box-sizing:border-box">
-                        <div class="muted" style="font-size:.8rem;margin-top:.5rem;line-height:1.5">Введёшь страну — флаг подставится сам (Нидерланды → 🇳🇱). WG/AWG сюда не примем — для него вкладка «WG / AWG».</div>
+                        <div class="muted" style="font-size:.8rem;margin-top:.5rem;line-height:1.5">Введёшь страну — флаг подставится сам (Нидерланды → 🇳🇱).</div>
                     </div>
                     <div>
                         <label for="sqcfg_raw">Конфиг</label>

@@ -21,13 +21,15 @@
                 <div class="set-info"><div class="set-t">Таймаут проксирования, сек <button type="button" class="qh" onclick="help('timeout')" aria-label="Справка">?</button></div><div class="set-d">Сколько ждать ответа origin при запросе подписки.</div></div>
                 <input type="number" name="proxy_timeout" value="<?= h(proxy_timeout()) ?>">
             </div>
-            <div class="set-row">
-                <div class="set-info"><div class="set-t">Доверять заголовку expire <button type="button" class="qh" onclick="help('trust')" aria-label="Справка">?</button></div><div class="set-d">Рекомендуется — продление подписки чинит себя само.</div></div>
-                <label class="switch"><input type="checkbox" name="trust_header_expire" <?= trust_header_expire()?'checked':'' ?>><span class="sl"></span></label>
-            </div>
-            <div class="set-row">
-                <div class="set-info"><div class="set-t">Проверять TLS-сертификат панели и origin</div><div class="set-d">Защита от MITM при запросах к панели и origin. Выключайте только при самоподписанном сертификате.</div></div>
-                <label class="switch"><input type="checkbox" name="tls_verify" <?= api_tls_verify()?'checked':'' ?>><span class="sl"></span></label>
+            <div class="set-grid2">
+                <div class="set-row">
+                    <div class="set-info"><div class="set-t">Доверять заголовку expire <button type="button" class="qh" onclick="help('trust')" aria-label="Справка">?</button></div><div class="set-d">Рекомендуется — продление подписки чинит себя само.</div></div>
+                    <label class="switch"><input type="checkbox" name="trust_header_expire" <?= trust_header_expire()?'checked':'' ?>><span class="sl"></span></label>
+                </div>
+                <div class="set-row">
+                    <div class="set-info"><div class="set-t">Проверять TLS-сертификат панели и origin</div><div class="set-d">Защита от MITM при запросах к панели и origin. Выключайте только при самоподписанном сертификате.</div></div>
+                    <label class="switch"><input type="checkbox" name="tls_verify" <?= api_tls_verify()?'checked':'' ?>><span class="sl"></span></label>
+                </div>
             </div>
             <div class="set-row">
                 <div class="set-info"><div class="set-t">Источник подписки</div><div class="set-d">«Зеркало» — проксирование origin-домена (как раньше). «Панель» — прослойка сама становится подпиской (sub-сервис Remnawave): конфиги берутся с <code>/api/sub</code> панели, а в браузере рендерится страница подписки. Адрес панели — это контейнер/loopback (рядом с панелью) <b>или</b> публичный <code>https://</code>-домен (если прослойка на отдельном сервере).</div></div>
@@ -58,6 +60,9 @@
         </form>
     </div>
     <style>
+        .set-grid2{display:grid;grid-template-columns:1fr 1fr;gap:.55rem;margin-top:.7rem}
+        .set-grid2 .set-row{margin-top:0}
+        @media(max-width:720px){.set-grid2{grid-template-columns:1fr}}
         .uahk-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:.5rem}
         .uahk{display:flex;align-items:center;gap:.65rem;border:1px solid var(--line);background:var(--bg2);border-radius:10px;padding:.6rem .8rem;cursor:pointer;transition:border-color .15s}
         .uahk:hover{border-color:var(--accent)}

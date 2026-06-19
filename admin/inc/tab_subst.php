@@ -13,7 +13,7 @@
                 <div class="set-info"><div class="set-t">Включить грейс-сквад</div><div class="set-d">На <code>user.expired</code> переносить истёкшего в ограниченный сквад вместо обычного истечения.</div></div>
                 <label class="switch"><input type="checkbox" name="grace_squad_enabled" <?= grace_squad_enabled()?'checked':'' ?>><span class="sl"></span></label>
             </div>
-            <label>Сквад для истёкших</label>
+            <label style="margin-top:1.25rem;display:block">Сквад для истёкших</label>
             <?php if ($grace_squads_err !== ''): ?>
                 <div class="warn">Не удалось получить список сквадов: <?= h($grace_squads_err) ?>. Проверьте URL и токен в «Подключении».</div>
             <?php elseif (!$grace_squads): ?>

@@ -349,6 +349,7 @@ if (isset($_GET['ajax']) && is_auth()) {
                 }
             } catch (Throwable $e) {}
         }
+        $rows = reqlog_collapse($rows);
         echo json_encode(['ok' => true, 'rows' => $rows, 'stats' => reqlog_today_stats()], JSON_UNESCAPED_UNICODE);
         exit();
     }
@@ -926,7 +927,7 @@ $panel_headers = []; $panel_headers_err = '';
 if ($tab === 'headers') $panel_headers = remnawave_panel_headers($panel_headers_err);
 
 $reqlog = [];
-if ($db_ok && $tab === 'reqlog') { ensure_reqlog_hwid(); foreach ($pdo->query('SELECT *, ' . sql_epoch('ts') . ' AS ts_epoch FROM request_log WHERE decision <> \'browser\' ORDER BY id DESC LIMIT 300') as $r) $reqlog[] = $r; }
+if ($db_ok && $tab === 'reqlog') { ensure_reqlog_hwid(); foreach ($pdo->query('SELECT *, ' . sql_epoch('ts') . ' AS ts_epoch FROM request_log WHERE decision <> \'browser\' ORDER BY id DESC LIMIT 300') as $r) $reqlog[] = $r; $reqlog = reqlog_collapse($reqlog); }
 $whlog = [];
 $wh_user_cond = "(event LIKE 'user.%' OR short_uuid IS NOT NULL OR username IS NOT NULL)";
 if ($db_ok && $tab === 'whlog') foreach ($pdo->query("SELECT *, " . sql_epoch('ts') . " AS ts_epoch FROM webhook_log WHERE $wh_user_cond ORDER BY id DESC LIMIT 300") as $r) $whlog[] = $r;
@@ -1138,7 +1139,7 @@ $nav = [
 $nav_sections = [
     ['l' => 'Главное',          'coll' => false, 'k' => 'main',   'items' => ['users', 'chat', 'reqlog']],
     ['l' => 'Настройки',        'coll' => true,  'k' => 'set',    'items' => ['connection', 'branding']],
-    ['l' => 'Вебхуки',          'coll' => true,  'k' => 'wh',     'items' => ['webhooks', 'fwdlog', 'whlog', 'whlog_other']],
+    ['l' => 'Вебхуки',          'coll' => true,  'k' => 'wh',     'items' => forward_enabled() ? ['webhooks', 'fwdlog', 'whlog', 'whlog_other'] : ['webhooks', 'whlog', 'whlog_other']],
     ['l' => 'Грейс',            'coll' => true,  'k' => 'grace',  'items' => ['subst', 'grace_users']],
     ['l' => 'Доступ / подмена', 'coll' => true,  'k' => 'access', 'items' => ['rules', 'hwid', 'overrides', 'squad_configs', 'wg_pool', 'addsub']],
     ['l' => 'Обслуживание',     'coll' => false, 'k' => 'maint',  'items' => ['sysinfo', 'update', 'migrate']],

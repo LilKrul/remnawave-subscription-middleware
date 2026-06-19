@@ -163,22 +163,25 @@ $u_branches  = array_values(array_unique(array_filter(['main', 'dev', $u_branch]
     <div class="card"><p style="margin:0">✅ Установлена последняя версия — обновлять нечего.</p></div>
     <?php endif; ?>
 
-    <?php if ($u_log): ?>
-    <div class="card">
-        <h2 style="margin-top:0;font-size:1rem">Журнал последней операции</h2>
-        <div class="up-logbox"><?php foreach ($u_log as $line): ?><div><?= h((string) $line) ?></div><?php endforeach; ?></div>
-    </div>
-    <?php endif; ?>
-
-    <?php if ($u_backup !== ''): ?>
-    <div class="card">
-        <h2 style="margin-top:0;font-size:1rem">Откат</h2>
-        <p class="muted" style="margin-top:0">Последний бэкап: <code><?= h($u_backup) ?></code>. Откат вернёт файлы к состоянию до последнего обновления.</p>
-        <form method="post" onsubmit="var f=this;uiConfirm('Откатить последнее обновление из бэкапа?',function(){f.submit();},'Откатить',false);return false;">
-            <input type="hidden" name="csrf" value="<?= h($token) ?>">
-            <input type="hidden" name="action" value="update_rollback">
-            <button type="submit" class="btn ghost">↩️ Откатить последнее обновление</button>
-        </form>
+    <?php if ($u_log || $u_backup !== ''): ?>
+    <div style="display:flex;gap:1rem;flex-wrap:wrap;align-items:stretch;margin-bottom:1rem">
+        <?php if ($u_log): ?>
+        <div class="card" style="flex:1 1 300px;margin:0">
+            <h2 style="margin-top:0;font-size:1rem">Журнал последней операции</h2>
+            <div class="up-logbox"><?php foreach ($u_log as $line): ?><div><?= h((string) $line) ?></div><?php endforeach; ?></div>
+        </div>
+        <?php endif; ?>
+        <?php if ($u_backup !== ''): ?>
+        <div class="card" style="flex:1 1 300px;margin:0">
+            <h2 style="margin-top:0;font-size:1rem">Откат</h2>
+            <p class="muted" style="margin-top:0">Последний бэкап: <code><?= h($u_backup) ?></code>. Откат вернёт файлы к состоянию до последнего обновления.</p>
+            <form method="post" onsubmit="var f=this;uiConfirm('Откатить последнее обновление из бэкапа?',function(){f.submit();},'Откатить',false);return false;">
+                <input type="hidden" name="csrf" value="<?= h($token) ?>">
+                <input type="hidden" name="action" value="update_rollback">
+                <button type="submit" class="btn ghost">↩️ Откатить последнее обновление</button>
+            </form>
+        </div>
+        <?php endif; ?>
     </div>
     <?php endif; ?>
 
