@@ -34,7 +34,7 @@ function grace_announce_normalize($raw) {
     $lines = array_map(fn($l) => trim($l), explode("\n", $raw));
     while ($lines && $lines[0] === '') array_shift($lines);
     while ($lines && end($lines) === '') array_pop($lines);
-    return mb_substr(implode('\n', $lines), 0, 200);
+    return mb_substr(implode("\n", $lines), 0, 200);
 }
 
 function grace_find($short) {

@@ -66,7 +66,7 @@
             <div class="ga-wrap">
                 <div class="ga-edit">
                     <textarea name="grace_announce" id="ga-input" rows="4" maxlength="400" placeholder="Подписка истекла &#10;Продлите — доступ вернётся&#10;Поддержка: @your_bot"><?= h(str_replace('\n', "\n", grace_announce())) ?></textarea>
-                    <p class="muted" style="font-size:.8rem;margin:.5rem 0 0">Каждая строка — отдельный перенос (koala рисует построчно; у Happ — одной строкой). Кириллица кодируется в base64 сама, лимит 200 символов.</p>
+                    <p class="muted" style="font-size:.8rem;margin:.5rem 0 0">Каждая строка — отдельный перенос (работает во всех клиентах, как в панели). Кириллица кодируется в base64 сама, лимит 200 символов.</p>
                 </div>
                 <div class="ga-prev">
                     <label style="margin-top:0">Превью в koala</label>
