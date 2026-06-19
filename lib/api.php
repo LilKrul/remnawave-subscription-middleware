@@ -137,6 +137,20 @@ function remnawave_internal_squads(&$error = '') {
     return $out;
 }
 
+function remnawave_external_squads(&$error = '') {
+    $error = '';
+    [$ok, $code, $data, $e] = remnawave_api_get('/api/external-squads');
+    if (!$ok) { $error = $e ?: ('HTTP ' . $code); return []; }
+    $resp = $data['response'] ?? $data;
+    $list = $resp['externalSquads'] ?? (is_array($resp) ? $resp : []);
+    $out = [];
+    if (is_array($list)) foreach ($list as $s) {
+        if (!is_array($s) || empty($s['uuid'])) continue;
+        $out[] = ['uuid' => (string) $s['uuid'], 'name' => (string) ($s['name'] ?? $s['uuid']), 'members' => (int) ($s['info']['membersCount'] ?? 0)];
+    }
+    return $out;
+}
+
 function remnawave_get_user_by_short($shortUuid, &$error = '') {
     $error = '';
     if ($shortUuid === '') { $error = 'Пустой shortUuid'; return null; }

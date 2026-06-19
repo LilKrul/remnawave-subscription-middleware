@@ -91,6 +91,14 @@ function grace_squad_active() {
     return grace_squad_enabled() && grace_squad_uuid() !== '' && remnawave_url() !== '' && remnawave_token() !== '';
 }
 
+function grace_external_enabled() { return setting('grace_external_enabled', '0') === '1'; }
+
+function grace_external_squad_uuid() { return trim((string) setting('grace_external_squad_uuid', '')); }
+
+function grace_external_active() {
+    return grace_external_enabled() && grace_external_squad_uuid() !== '' && remnawave_url() !== '' && remnawave_token() !== '';
+}
+
 function forward_enabled() { return setting('forward_enabled', '0') === '1'; }
 
 function forward_timeout() { return max(2, (int) (setting('forward_timeout', '8') ?: 8)); }

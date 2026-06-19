@@ -486,6 +486,8 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && is_auth()) {
         $gh = trim((string) ($_POST['grace_hwid_limit'] ?? ''));
         set_setting('grace_hwid_limit', $gh === '' ? '' : (string) max(0, (int) $gh));
         set_setting('grace_days', ($_POST['grace_days'] ?? '') === '' ? '' : (string) max(0, (int) $_POST['grace_days']));
+        set_setting('grace_external_enabled', isset($_POST['grace_external_enabled']) ? '1' : '0');
+        set_setting('grace_external_squad_uuid', trim($_POST['grace_external_squad_uuid'] ?? ''));
         flash('Настройки грейс-сквада сохранены');
         header('Location: index.php?tab=subst'); exit();
     }
@@ -872,8 +874,10 @@ if ($db_ok && $tab === 'grace_users') {
 
 $blocked_text  = implode("\n", get_blocked_remarks());
 $grace_squads  = []; $grace_squads_err = '';
+$ext_squads    = []; $ext_squads_err = '';
 if ($tab === 'subst' && remnawave_url() !== '' && remnawave_token() !== '') {
     $grace_squads = remnawave_internal_squads($grace_squads_err);
+    $ext_squads   = remnawave_external_squads($ext_squads_err);
 }
 
 $sqcfg_squads = []; $sqcfg_squads_err = ''; $sqcfg_list = []; $sqcfg_names = [];

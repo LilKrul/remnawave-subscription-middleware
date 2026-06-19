@@ -41,6 +41,26 @@
                     </select>
                 </div>
             </div>
+            <div class="set-row" style="margin-top:1.5rem">
+                <div class="set-info"><div class="set-t">Внешний сквад на время грейса</div><div class="set-d">Дополнительно к внутреннему: на грейс юзеру выдаётся внешний сквад (его <code>announce</code> и заголовки из Subscription Settings панели), после грейса возвращается родной.</div></div>
+                <label class="switch"><input type="checkbox" name="grace_external_enabled" <?= grace_external_enabled()?'checked':'' ?>><span class="sl"></span></label>
+            </div>
+            <label>Внешний сквад для грейса</label>
+            <?php if ($ext_squads_err !== ''): ?>
+                <div class="warn">Не удалось получить список внешних сквадов: <?= h($ext_squads_err) ?>. Проверьте URL и токен в «Подключении».</div>
+            <?php elseif (!$ext_squads): ?>
+                <p class="muted">Внешних сквадов нет или API не настроен. Создайте внешний сквад в панели и задайте в его Subscription Settings нужный <code>announce</code>/заголовки.</p>
+            <?php else: $curx = grace_external_squad_uuid(); ?>
+                <div class="sq-grid">
+                <?php foreach ($ext_squads as $s): ?>
+                    <label class="sq-item<?= $curx === $s['uuid'] ? ' on' : '' ?>">
+                        <input type="radio" name="grace_external_squad_uuid" value="<?= h($s['uuid']) ?>" <?= $curx === $s['uuid'] ? 'checked' : '' ?>>
+                        <span class="sq-n"><?= h($s['name']) ?></span>
+                        <span class="muted" style="font-size:.78rem"><?= (int) $s['members'] ?></span>
+                    </label>
+                <?php endforeach; ?>
+                </div>
+            <?php endif; ?>
             <div style="margin-top:1.25rem"><button type="submit">💾 Сохранить</button></div>
         </form>
     </div>
