@@ -41,6 +41,19 @@
                 <div><label>Адрес subscription-page (режим «Панель»)</label><input type="text" name="subpage_external_url" value="<?= h(subpage_external_url()) ?>" placeholder="https://panel.example.com или http://127.0.0.1:3010" <?= submw_in_docker() ? 'readonly' : '' ?>><div class="muted" style="font-size:.8rem;margin-top:.3rem">Рядом с панелью — адрес контейнера/loopback; на отдельном сервере — публичный https-адрес панели.</div></div>
                 <div></div>
             </div>
+            <?php $ua_keys_now = ua_hwid_keys(); $ua_key_meta = ['x-hwid' => 'идентификатор устройства (влияет на лимит)', 'x-device-os' => 'ОС устройства', 'x-ver-os' => 'версия ОС', 'x-device-model' => 'модель устройства']; ?>
+            <div class="set-row">
+                <div class="set-info"><div class="set-t">HWID из User-Agent <button type="button" class="qh" onclick="help('uahwid')" aria-label="Справка">?</button></div><div class="set-d">Если клиент (v2rayNG, Clash) не умеет слать HTTP-заголовки, но даёт менять User-Agent — извлекать device-заголовки из строки вида <code>...; x-hwid=значение; ...)</code> и форвардить на панель. Реальный заголовок всегда главнее. <b>Внимание:</b> User-Agent задаётся пользователем вручную, поэтому <code>x-hwid</code> так можно подменить — это ослабляет лимит устройств; HWID здесь удобство, не защита. Держите выключенным, если не требуется.</div></div>
+                <label class="switch"><input type="checkbox" name="ua_hwid_parse" <?= ua_hwid_parse() ? 'checked' : '' ?>><span class="sl"></span></label>
+            </div>
+            <div class="set-row">
+                <div class="set-info"><div class="set-t">Какие ключи извлекать</div><div class="set-d">Отмеченные заголовки берутся из User-Agent, когда настоящего заголовка в запросе нет.</div></div>
+                <div style="display:flex;flex-direction:column;gap:.45rem;align-items:flex-start">
+                    <?php foreach ($ua_key_meta as $uk => $ud): ?>
+                        <label style="display:flex;align-items:center;gap:.5rem;cursor:pointer;margin:0"><input type="checkbox" name="ua_hwid_keys[]" value="<?= h($uk) ?>" style="width:auto;margin:0;flex:0 0 auto" <?= in_array($uk, $ua_keys_now, true) ? 'checked' : '' ?>><span><code><?= h($uk) ?></code> <span class="muted">— <?= h($ud) ?></span></span></label>
+                    <?php endforeach; ?>
+                </div>
+            </div>
             <div style="margin-top:1.25rem"><button type="submit">💾 Сохранить подключение</button></div>
         </form>
     </div>

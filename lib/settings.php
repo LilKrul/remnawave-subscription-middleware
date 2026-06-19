@@ -24,6 +24,31 @@ function trust_header_expire() { return setting('trust_header_expire', '1') === 
 
 function api_tls_verify() { return setting('tls_verify', '1') === '1'; }
 
+function ua_hwid_parse() { return setting('ua_hwid_parse', '0') === '1'; }
+
+function ua_hwid_keys_all() { return ['x-hwid', 'x-device-os', 'x-ver-os', 'x-device-model']; }
+
+function ua_hwid_keys() {
+    $all = ua_hwid_keys_all();
+    $raw = json_decode((string) setting('ua_hwid_keys', '["x-hwid"]'), true);
+    if (!is_array($raw)) return ['x-hwid'];
+    $out = [];
+    foreach ($raw as $k) {
+        $k = strtolower(trim((string) $k));
+        if (in_array($k, $all, true) && !in_array($k, $out, true)) $out[] = $k;
+    }
+    return $out ?: ['x-hwid'];
+}
+
+function ua_hwid_extract($ua, $key) {
+    $ua  = (string) $ua;
+    $key = (string) $key;
+    if ($ua === '' || $key === '') return '';
+    if (!preg_match('/' . preg_quote($key, '/') . '=([^;)]+)/i', $ua, $m)) return '';
+    $val = preg_replace('/[\x00-\x1F\x7F]/', '', trim($m[1]));
+    return strlen($val) > 256 ? substr($val, 0, 256) : $val;
+}
+
 function expired_grace_days() { return max(0, (int) (setting('expired_grace_days', '7'))); }
 
 function expired_grace_passed($expire_ts, $created_at_str = null, $now = null) {

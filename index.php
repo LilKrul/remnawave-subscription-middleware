@@ -79,6 +79,19 @@ if (subpage_active()) {
     $request_headers = panel_cookie_header($request_headers);
 }
 
+$ua_hwid_value = '';
+$ua_string = $_SERVER['HTTP_USER_AGENT'] ?? '';
+if (ua_hwid_parse() && $ua_string !== '') {
+    foreach (ua_hwid_keys() as $uk) {
+        $sk = 'HTTP_' . strtoupper(str_replace('-', '_', $uk));
+        if (isset($_SERVER[$sk]) && trim((string) $_SERVER[$sk]) !== '') continue;
+        $uv = ua_hwid_extract($ua_string, $uk);
+        if ($uv === '') continue;
+        $request_headers[] = $uk . ': ' . $uv;
+        if ($uk === 'x-hwid') $ua_hwid_value = $uv;
+    }
+}
+
 $grabbed_headers = [];
 $ch = curl_init();
 curl_setopt_array($ch, [
@@ -123,6 +136,7 @@ if ($curl_err) {
 }
 
 $current_hwid = $_SERVER['HTTP_X_HWID'] ?? '';
+if ($current_hwid === '' && $ua_hwid_value !== '') $current_hwid = $ua_hwid_value;
 $expire_ts    = parse_expire_from_userinfo($grabbed_headers['subscription-userinfo'] ?? null);
 $now          = time();
 $trust_header = trust_header_expire();
