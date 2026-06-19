@@ -4,12 +4,11 @@
         </button>
         <div class="coll-body">
             <p class="muted" style="margin-top:0">Прослойка дописывает в подписку дополнительные конфиги, привязанные к внутреннему скваду Remnawave: пользователь сквада получает свои узлы плюс эти. Конфиги отдаются <b>только пока подписка активна</b> — при истечении или блокировке они исчезают из подписки (остаются заглушки).</p>
-            <p class="muted">Конфиги делятся на два вида, и настраиваются они в разных вкладках:</p>
             <ul class="muted" style="margin:.2rem 0 .2rem;padding-left:1.1rem;line-height:1.7">
-                <li><b>Простые (VLESS)</b> — <b>эта вкладка</b>. Один конфиг дописывается всем подписчикам сквада одинаково. Без раздельных настроек: вставил ссылку <code>vless://</code>, выбрал сквады — готово.</li>
-                <li><b>WG / AmneziaWG</b> — вкладка <b>«WG / AWG»</b>. У них ограничение: один ключ = одно одновременное устройство. Поэтому там расширенное управление — пул конфигов, выдача на пользователя/устройство, ручные привязки, пакетная загрузка. Простой «общий» режим тоже есть.</li>
+                <li><b>Простые (VLESS)</b> — <b>эта вкладка</b>. Конфиг дописывается всем подписчикам сквада одинаково. Без раздельных настроек: вставил <code>vless://</code>, выбрал сквады — готово. Можно и закрепить конфиг за конкретным пользователем (ниже).</li>
+                <li><b>WG / AmneziaWG</b> — вкладка <b>«WG / AWG»</b>. Там ограничение «один ключ = одно одновременное устройство», поэтому пул, выдача на пользователя/устройство, пакетная загрузка.</li>
             </ul>
-            <p class="muted" style="margin-bottom:0">Порядок настройки: сначала во вкладке «Подключение» укажи URL панели и токен — без этого сквады не подтянутся; затем выбери сквады; затем добавь конфиг. Для WG/AWG переходи во вкладку «WG / AWG».</p>
+            <p class="muted" style="margin-bottom:0">Порядок: сначала во вкладке «Подключение» укажи URL панели и токен — без этого сквады не подтянутся; затем выбери сквады и добавь конфиг.</p>
         </div>
     </section>
 
@@ -30,34 +29,94 @@
                 <input type="hidden" name="kind" value="simple">
                 <input type="hidden" name="ret" value="squad_configs">
 
-                <div class="sqc-2col">
-                    <div>
-                        <label>1. Сквады <span class="muted" style="font-weight:400">— один или несколько</span></label>
-                        <input type="text" class="sq-search" placeholder="поиск сквада…">
-                        <div class="sq-grid">
-                            <?php foreach ($sqcfg_squads as $s): ?>
-                                <label class="sq-item"><input type="checkbox" name="squads[]" value="<?= h($s['uuid']) ?>"><span class="sq-n"><?= h($s['name']) ?></span><span class="muted" style="font-size:.78rem"><?= (int) $s['members'] ?></span></label>
-                            <?php endforeach; ?>
-                            <?php if (!$sqcfg_squads): ?><span class="muted" style="font-size:.82rem">Сквады не получены — настройте подключение.</span><?php endif; ?>
-                        </div>
-                    </div>
-                    <div>
-                        <label for="sqcfg_name">2. Метка</label>
-                        <input type="text" id="sqcfg_name" name="name" class="sqcfg-flag" placeholder="напр.: Нидерланды · VLESS" maxlength="191" required style="max-width:420px;box-sizing:border-box">
-                        <div class="muted" style="font-size:.8rem;margin-top:.55rem;line-height:1.5">Введёшь страну в метке — флаг подставится сам (Нидерланды → 🇳🇱). WG/AWG-конфиг сюда не примем — для него вкладка «WG / AWG».</div>
-                    </div>
+                <label>Сквады <span class="muted" style="font-weight:400">— один или несколько</span></label>
+                <div class="sq-grid">
+                    <?php foreach ($sqcfg_squads as $s): ?>
+                        <label class="sq-item"><input type="checkbox" name="squads[]" value="<?= h($s['uuid']) ?>"><span class="sq-n"><?= h($s['name']) ?></span><span class="muted" style="font-size:.78rem"><?= (int) $s['members'] ?></span></label>
+                    <?php endforeach; ?>
+                    <?php if (!$sqcfg_squads): ?><span class="muted" style="font-size:.82rem">Сквады не получены — настройте подключение.</span><?php endif; ?>
                 </div>
 
-                <div class="form-row" style="margin-top:1rem">
-                    <label for="sqcfg_raw">3. Конфиг</label>
-                    <textarea id="sqcfg_raw" name="raw" rows="6" spellcheck="false" placeholder="Вставьте ссылку vless://…" style="width:100%;font-family:monospace;font-size:.82rem;box-sizing:border-box"></textarea>
+                <div class="mc-grid" style="margin-top:1rem">
+                    <div>
+                        <label for="sqcfg_name">Метка</label>
+                        <input type="text" id="sqcfg_name" name="name" class="sqcfg-flag" placeholder="напр.: Нидерланды · VLESS" maxlength="191" required style="width:100%;box-sizing:border-box">
+                        <div class="muted" style="font-size:.8rem;margin-top:.5rem;line-height:1.5">Введёшь страну — флаг подставится сам (Нидерланды → 🇳🇱). WG/AWG сюда не примем — для него вкладка «WG / AWG».</div>
+                    </div>
+                    <div>
+                        <label for="sqcfg_raw">Конфиг</label>
+                        <textarea id="sqcfg_raw" name="raw" rows="5" spellcheck="false" placeholder="vless://…" style="width:100%;font-family:monospace;font-size:.82rem;box-sizing:border-box"></textarea>
+                    </div>
                 </div>
                 <div id="sqcfg_hint" class="sqcfg-hint" style="display:none"></div>
                 <div style="margin-top:1rem;display:flex;align-items:center;gap:.75rem;flex-wrap:wrap">
                     <button type="submit" class="btn">Добавить конфиг</button>
-                    <span class="muted" style="font-size:.8rem">Секреты конфига хранятся в БД и отдаются только при активной подписке.</span>
+                    <span class="muted" style="font-size:.8rem">Секреты хранятся в БД и отдаются только при активной подписке.</span>
                 </div>
             </form>
+        </div>
+    </section>
+
+    <section class="coll" data-coll="sqcfg_manual">
+        <button type="button" class="coll-head" onclick="collToggle(this)"><span>Закрепить конфиг за пользователем</span>
+            <span class="coll-hr"><svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></span>
+        </button>
+        <div class="coll-body">
+            <p class="muted" style="margin-top:0">Отдать конкретный простой конфиг только одному пользователю (пока его подписка активна). Конфиг должен быть добавлен выше и привязан к скваду.</p>
+            <form method="post" autocomplete="off">
+                <input type="hidden" name="csrf" value="<?= h($token) ?>">
+                <input type="hidden" name="action" value="pool_manual_add">
+                <input type="hidden" name="ret" value="squad_configs">
+                <input type="hidden" name="short_uuid" id="wgm_short">
+                <div class="sqcfg-grid">
+                    <div>
+                        <label>Сквад</label>
+                        <select name="pool_squad" id="wgm_squad" class="sqcfg-sel">
+                            <option value="">—</option>
+                            <?php foreach ($sqcfg_squads as $s): ?><option value="<?= h($s['uuid']) ?>"><?= h($s['name']) ?></option><?php endforeach; ?>
+                        </select>
+                    </div>
+                    <div>
+                        <label>Конфиг</label>
+                        <select name="config_id" id="wgm_cfg" class="sqcfg-sel"><option value="">—</option></select>
+                    </div>
+                    <div>
+                        <label>Пользователь (shortUuid или имя)</label>
+                        <div style="display:flex;gap:.4rem"><input type="text" id="wgm_q" placeholder="shortUuid / username" style="flex:1;box-sizing:border-box"><button type="button" class="sqcfg-btn" id="wgm_find">Найти</button></div>
+                    </div>
+                </div>
+                <div id="wgm_info" class="muted" style="font-size:.82rem;margin:.6rem 0"></div>
+                <button type="submit" class="btn" id="wgm_submit" disabled>Закрепить</button>
+            </form>
+            <?php
+                $simple_ids = [];
+                foreach ($sqcfg_simple as $c) $simple_ids[(int) $c['id']] = (string) ($c['name'] ?? '');
+                $man = array_values(array_filter($sqcfg_leases, fn($l) => (int) $l['manual'] === 1 && isset($simple_ids[(int) $l['config_id']])));
+            ?>
+            <h2 style="font-size:.95rem;margin:1.3rem 0 .5rem">Закреплённые конфиги (<?= count($man) ?>)</h2>
+            <?php if (!$man): ?><p class="muted">Пока пусто.</p><?php else: ?>
+            <table class="logtbl">
+                <thead><tr><th>Сквад</th><th>Конфиг</th><th>Пользователь</th><th></th></tr></thead>
+                <tbody>
+                <?php foreach ($man as $l): $lcid = (int) $l['config_id']; ?>
+                    <tr>
+                        <td><?= h($sqcfg_names[$l['pool_id']] ?? $l['pool_id']) ?></td>
+                        <td><?= $simple_ids[$lcid] !== '' ? h($simple_ids[$lcid]) : ('#' . $lcid) ?></td>
+                        <td style="font-family:monospace;font-size:.78rem"><?= h((string) $l['short_uuid']) ?></td>
+                        <td style="text-align:right">
+                            <form method="post" style="margin:0" onsubmit="return uiConfirmForm(this,'Снять привязку?')">
+                                <input type="hidden" name="csrf" value="<?= h($token) ?>">
+                                <input type="hidden" name="action" value="pool_manual_del">
+                                <input type="hidden" name="ret" value="squad_configs">
+                                <input type="hidden" name="id" value="<?= (int) $l['id'] ?>">
+                                <button type="submit" class="danger">🗑</button>
+                            </form>
+                        </td>
+                    </tr>
+                <?php endforeach; ?>
+                </tbody>
+            </table>
+            <?php endif; ?>
         </div>
     </section>
 
@@ -136,7 +195,6 @@
                     <input type="hidden" name="id" id="sqedit_id" value="">
                     <div style="margin-bottom:.85rem">
                         <label>Сквады</label>
-                        <input type="text" class="sq-search" placeholder="поиск сквада…">
                         <div class="sq-grid" id="sqedit_chips">
                             <?php foreach ($sqcfg_squads as $s): ?>
                                 <label class="sq-item"><input type="checkbox" name="squads[]" value="<?= h($s['uuid']) ?>"><span class="sq-n"><?= h($s['name']) ?></span><span class="muted" style="font-size:.78rem"><?= (int) $s['members'] ?></span></label>
@@ -161,6 +219,12 @@
     </div>
 
     <style>
+        .mc-grid{display:grid;grid-template-columns:1fr 1fr;gap:1rem;align-items:start}
+        @media(max-width:720px){.mc-grid{grid-template-columns:1fr}}
+        .sqcfg-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:.7rem 1rem;align-items:end}
+        .sqcfg-grid select,.sqcfg-grid input{width:100%;box-sizing:border-box}
+        .sqcfg-grid label{display:block;margin-bottom:.3rem;font-weight:600;font-size:.82rem}
+        .sqcfg-sel{appearance:none;-webkit-appearance:none;-moz-appearance:none;padding-right:2.2rem;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right .75rem center;background-size:.95rem}
         .sqcfg-hint{margin-top:1rem;border:1px solid var(--line);border-radius:10px;padding:.8rem 1rem;font-size:.86rem;line-height:1.5;background:var(--bg2)}
         .sqcfg-hint.ok{border-color:var(--accent)}
         .sqcfg-hint.bad{border-color:var(--c-warn-fg)}
@@ -172,8 +236,6 @@
         .sqcfg-edit{margin-right:.45rem}
         #sqEditModal label:not(.sq-item){display:block;margin-bottom:.3rem;font-weight:600;font-size:.82rem}
         .card label{display:block;margin-bottom:.35rem;font-weight:600;font-size:.85rem}
-        .sqc-2col > div + div{margin-top:1rem}
-        .sq-search{width:100%;margin:.1rem 0 .55rem;box-sizing:border-box}
         .sq-tag{display:inline-block;background:var(--bg2);border:1px solid var(--line);border-radius:6px;padding:.08rem .45rem;font-size:.74rem;margin:.1rem .25rem .1rem 0;white-space:nowrap}
     </style>
     <?php include __DIR__ . '/_sqcfg_js.php'; ?>
@@ -181,4 +243,5 @@
     window.SQCFG = <?= json_encode($sqcfg_edit ?? [], JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
     sqcfgInitEdit();
     sqcfgInitPager('sqcfgTbl', 'sqcfgPager', 'sqcfgSize', 'sqcfg_size');
+    sqcfgInitManual(<?= json_encode($sqcfg_simple_pool ?? [], JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT) ?>, <?= json_encode($sqcfg_names, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT) ?>);
     </script>

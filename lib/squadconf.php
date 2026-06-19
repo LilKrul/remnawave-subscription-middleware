@@ -51,6 +51,18 @@ function squadconf_squads_of($row) {
     return $u !== '' ? [$u] : [];
 }
 
+function squadconf_by_ids(array $ids) {
+    squadconf_ensure();
+    $ids = array_values(array_unique(array_filter(array_map('intval', $ids), fn($x) => $x > 0)));
+    if (!$ids || !($p = db())) return [];
+    try {
+        $in = implode(',', array_fill(0, count($ids), '?'));
+        $st = $p->prepare("SELECT * FROM squad_configs WHERE id IN ($in)");
+        $st->execute($ids);
+        return $st->fetchAll();
+    } catch (Throwable $e) { return []; }
+}
+
 function squadconf_all() {
     squadconf_ensure();
     if (!($p = db())) return [];

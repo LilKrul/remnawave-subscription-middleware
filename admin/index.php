@@ -867,13 +867,13 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && is_auth()) {
             [$pok, $perr] = wglease_manual_add($sq, $cid, $su, $hw);
             flash($pok ? 'Ручная привязка добавлена' : ('Не удалось: ' . $perr));
         }
-        header('Location: index.php?tab=wg_pool'); exit();
+        header('Location: index.php?tab=' . ((($_POST['ret'] ?? '') === 'squad_configs') ? 'squad_configs' : 'wg_pool')); exit();
     }
 
     if ($action === 'pool_manual_del') {
         wglease_del((int) ($_POST['id'] ?? 0));
         flash('Привязка снята');
-        header('Location: index.php?tab=wg_pool'); exit();
+        header('Location: index.php?tab=' . ((($_POST['ret'] ?? '') === 'squad_configs') ? 'squad_configs' : 'wg_pool')); exit();
     }
 
     if ($action === 'save_addsub') {
@@ -991,13 +991,22 @@ if ($tab === 'subst' && remnawave_url() !== '' && remnawave_token() !== '') {
 
 $sqcfg_squads = []; $sqcfg_squads_err = ''; $sqcfg_names = [];
 $sqcfg_simple = []; $sqcfg_wg = [];
-$sqcfg_modes = []; $sqcfg_stock = []; $sqcfg_pool_cfgs = []; $sqcfg_leases = []; $sqcfg_reclaim_days = 14; $sqcfg_sizing = ['rows' => [], 'ts' => 0];
+$sqcfg_modes = []; $sqcfg_stock = []; $sqcfg_pool_cfgs = []; $sqcfg_simple_pool = []; $sqcfg_leases = []; $sqcfg_reclaim_days = 14; $sqcfg_sizing = ['rows' => [], 'ts' => 0];
 if ($tab === 'squad_configs' || $tab === 'wg_pool') {
     if (remnawave_url() !== '' && remnawave_token() !== '') $sqcfg_squads = remnawave_internal_squads($sqcfg_squads_err);
     foreach ($sqcfg_squads as $s) $sqcfg_names[$s['uuid']] = $s['name'];
     foreach (squadconf_all() as $c) {
         if (in_array((string) ($c['type'] ?? ''), ['wireguard', 'amneziawg'], true)) $sqcfg_wg[] = $c;
         else $sqcfg_simple[] = $c;
+    }
+    $sqcfg_leases = wglease_list();
+}
+if ($tab === 'squad_configs') {
+    foreach ($sqcfg_simple as $c) {
+        if ((int) $c['enabled'] !== 1) continue;
+        foreach (squadconf_squads_of($c) as $sq) {
+            $sqcfg_simple_pool[$sq][] = ['id' => (int) $c['id'], 'name' => (string) ($c['name'] ?? ''), 'type' => (string) ($c['type'] ?? '')];
+        }
     }
 }
 if ($tab === 'wg_pool') {
@@ -1010,7 +1019,6 @@ if ($tab === 'wg_pool') {
             $sqcfg_pool_cfgs[$sq][] = ['id' => (int) $c['id'], 'name' => (string) ($c['name'] ?? ''), 'type' => (string) ($c['type'] ?? '')];
         }
     }
-    $sqcfg_leases = wglease_list();
     $sqcfg_sizing = wglease_sizing_cached();
 }
 $addsub_list = [];

@@ -106,4 +106,53 @@
         var sel = document.getElementById(sizeId); if (sel) sel.value = String(size);
         render();
     };
+        window.sqcfgInitManual = function(POOL, NAMES){
+        POOL = POOL || {}; NAMES = NAMES || {};
+        var sqSel = document.getElementById('wgm_squad'), cfgSel = document.getElementById('wgm_cfg');
+        if(!sqSel || !cfgSel) return;
+        function fillCfg(){
+            var sq = sqSel.value; cfgSel.innerHTML = '<option value="">—</option>';
+            (POOL[sq] || []).forEach(function(c){
+                var o = document.createElement('option'); o.value = c.id; o.textContent = (c.name || ('#'+c.id)) + (c.type ? (' · '+c.type) : ''); cfgSel.appendChild(o);
+            });
+            chkReady();
+        }
+        function chkReady(){
+            var btn = document.getElementById('wgm_submit'); if(!btn) return;
+            btn.disabled = !(document.getElementById('wgm_short').value && cfgSel.value && sqSel.value);
+        }
+        sqSel.addEventListener('change', fillCfg);
+        cfgSel.addEventListener('change', chkReady);
+        var findBtn = document.getElementById('wgm_find');
+        if(findBtn){
+            findBtn.addEventListener('click', function(){
+                var q = document.getElementById('wgm_q').value.trim(); if(!q) return;
+                var info = document.getElementById('wgm_info'); info.textContent = 'Ищу…';
+                fetch('?ajax=pool_user&q=' + encodeURIComponent(q)).then(function(r){ return r.json(); }).then(function(d){
+                    if(!d.ok){ info.textContent = d.error || 'Не найден'; document.getElementById('wgm_short').value = ''; chkReady(); return; }
+                    document.getElementById('wgm_short').value = d.user.shortUuid || '';
+                    var sqn = (d.user.squads || []).map(function(s){ return NAMES[s.uuid] || s.name || s.uuid; }).join(', ');
+                    var lim = (d.user.hwidDeviceLimit == null ? '' : (' · лимит устройств: ' + d.user.hwidDeviceLimit));
+                    info.innerHTML = 'Пользователь: <b>' + (d.user.username || '') + '</b>' + lim + (sqn ? (' · сквады: ' + sqn) : '');
+                    var hw = document.getElementById('wgm_hwid');
+                    if(hw){
+                        hw.innerHTML = '<option value="">— любое (на пользователя)</option>';
+                        (d.devices || []).forEach(function(dv){ var o=document.createElement('option'); o.value=dv.hwid; o.textContent=(dv.platform||dv.deviceModel||'')+' · '+(dv.hwid||''); hw.appendChild(o); });
+                    }
+                    chkReady();
+                }).catch(function(){ info.textContent = 'Ошибка запроса'; });
+            });
+        }
+    };
+    window.sqcfgInitFileBtn = function(inputId, infoId){
+        var inp = document.getElementById(inputId), info = document.getElementById(infoId);
+        if(!inp) return;
+        inp.addEventListener('change', function(){
+            var n = inp.files ? inp.files.length : 0;
+            if(!info) return;
+            if(!n){ info.textContent = 'Файлы не выбраны'; return; }
+            var names = []; for(var i=0;i<inp.files.length && i<6;i++) names.push(inp.files[i].name);
+            info.textContent = 'Выбрано файлов: ' + n + ' — ' + names.join(', ') + (n>6?' …':'');
+        });
+    };
     </script>

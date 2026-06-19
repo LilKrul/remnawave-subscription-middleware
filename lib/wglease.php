@@ -45,6 +45,7 @@ function wglease_ensure() {
             $p->exec("CREATE UNIQUE INDEX IF NOT EXISTS uq_wgl_key ON wg_lease(lease_key)");
             $p->exec("CREATE UNIQUE INDEX IF NOT EXISTS uq_wgl_slot ON wg_lease(pool_id, config_id)");
             $p->exec("CREATE INDEX IF NOT EXISTS idx_wgl_pool ON wg_lease(pool_id)");
+            $p->exec("CREATE INDEX IF NOT EXISTS idx_wgl_short ON wg_lease(short_uuid)");
             $p->exec("CREATE TABLE IF NOT EXISTS hwid_devices (
                 user_uuid TEXT NOT NULL,
                 hwid TEXT NOT NULL,
@@ -111,6 +112,10 @@ function wglease_select($short_uuid, $hwid, array $u_squads) {
         }
         $pick = wglease_pick($sq, $subkey, $short_uuid, ($mode === 'devices' ? $hwid : ''), $cands);
         if ($pick) { $added[(int) $pick['id']] = true; $out[] = $pick; }
+    }
+    foreach (wglease_manual_for_user($short_uuid, $hwid) as $c) {
+        $id = (int) $c['id'];
+        if (!isset($added[$id])) { $added[$id] = true; $out[] = $c; }
     }
     return $out;
 }
@@ -285,6 +290,25 @@ function wglease_purge_user($short_uuid) {
     if (!($p = db()) || $short_uuid === '') return;
     try { $p->prepare('DELETE FROM wg_lease WHERE manual = 0 AND short_uuid = ?')->execute([$short_uuid]); }
     catch (Throwable $e) {}
+}
+
+function wglease_manual_for_user($short_uuid, $hwid) {
+    wglease_ensure();
+    $short_uuid = (string) $short_uuid; $hwid = (string) $hwid;
+    if ($short_uuid === '' || !($p = db())) return [];
+    $ids = [];
+    try {
+        $st = $p->prepare('SELECT config_id, hwid FROM wg_lease WHERE manual = 1 AND short_uuid = ?');
+        $st->execute([$short_uuid]);
+        foreach ($st->fetchAll() as $r) {
+            $lh = (string) ($r['hwid'] ?? '');
+            if ($lh === '' || ($hwid !== '' && $lh === $hwid)) $ids[] = (int) $r['config_id'];
+        }
+    } catch (Throwable $e) {}
+    if (!$ids) return [];
+    $out = [];
+    foreach (squadconf_by_ids($ids) as $c) if ((int) ($c['enabled'] ?? 0) === 1) $out[] = $c;
+    return $out;
 }
 
 function wglease_sizing(&$err = '', &$warn = '', &$totals = null) {

@@ -175,7 +175,7 @@
     .srow.support{background:#0c1f14}.srow.support .dot{background:#22c55e}.srow.support .pg{color:#22c55e}
     .ph-badge{font-size:.62rem;background:#14532d;color:#bbf7d0;padding:.05rem .4rem;border-radius:1rem;margin-left:.3rem}
     .ph-empty{padding:1rem;color:#64748b;font-size:.82rem;text-align:center}
-    .sq-grid{display:grid;grid-template-columns:1fr 1fr;gap:.5rem;margin-top:.4rem}
+    .sq-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:.5rem;margin-top:.4rem}
     .sq-item{display:flex;align-items:center;gap:.6rem;border:1px solid var(--line);border-radius:9px;padding:.55rem .75rem;cursor:pointer;background:var(--bg2)}
     .sq-item.on{border-color:var(--accent);background:var(--accent-light)}
     .sq-item input{appearance:none;-webkit-appearance:none;-moz-appearance:none;width:16px;height:16px;margin:0;flex:0 0 auto;border:1.5px solid var(--muted);border-radius:50%;background:transparent;cursor:pointer;position:relative}
