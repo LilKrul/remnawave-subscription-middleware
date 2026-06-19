@@ -46,11 +46,11 @@
                 <div class="set-info"><div class="set-t">HWID из User-Agent <button type="button" class="qh" onclick="help('uahwid')" aria-label="Справка">?</button></div><div class="set-d">Если клиент (v2rayNG, Clash) не умеет слать HTTP-заголовки, но даёт менять User-Agent — извлекать device-заголовки из строки вида <code>...; x-hwid=значение; ...)</code> и форвардить на панель. Реальный заголовок всегда главнее. <b>Внимание:</b> User-Agent задаётся пользователем вручную, поэтому <code>x-hwid</code> так можно подменить — это ослабляет лимит устройств; HWID здесь удобство, не защита. Держите выключенным, если не требуется.</div></div>
                 <label class="switch"><input type="checkbox" name="ua_hwid_parse" <?= ua_hwid_parse() ? 'checked' : '' ?>><span class="sl"></span></label>
             </div>
-            <div class="set-row">
-                <div class="set-info"><div class="set-t">Какие ключи извлекать</div><div class="set-d">Отмеченные заголовки берутся из User-Agent, когда настоящего заголовка в запросе нет.</div></div>
-                <div style="display:flex;flex-direction:column;gap:.45rem;align-items:flex-start">
+            <div class="set-row" style="display:block">
+                <div class="set-info" style="margin-bottom:.65rem"><div class="set-t">Какие ключи извлекать</div><div class="set-d">Отмеченные заголовки берутся из User-Agent, когда настоящего заголовка в запросе нет.</div></div>
+                <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:.5rem">
                     <?php foreach ($ua_key_meta as $uk => $ud): ?>
-                        <label style="display:flex;align-items:center;gap:.5rem;cursor:pointer;margin:0"><input type="checkbox" name="ua_hwid_keys[]" value="<?= h($uk) ?>" style="width:auto;margin:0;flex:0 0 auto" <?= in_array($uk, $ua_keys_now, true) ? 'checked' : '' ?>><span><code><?= h($uk) ?></code> <span class="muted">— <?= h($ud) ?></span></span></label>
+                        <label class="chk-field" style="align-items:flex-start;min-height:auto;padding:.6rem .75rem"><input type="checkbox" name="ua_hwid_keys[]" value="<?= h($uk) ?>" style="margin-top:.15rem" <?= in_array($uk, $ua_keys_now, true) ? 'checked' : '' ?>><span style="min-width:0"><code><?= h($uk) ?></code><span class="muted" style="display:block;font-size:.76rem;margin-top:.2rem;line-height:1.35"><?= h($ud) ?></span></span></label>
                     <?php endforeach; ?>
                 </div>
             </div>
