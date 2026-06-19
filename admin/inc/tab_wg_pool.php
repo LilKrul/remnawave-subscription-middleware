@@ -30,7 +30,7 @@
                 <input type="hidden" name="action" value="batch_wg_config">
                 <label>Куда <span class="muted" style="font-weight:400">— сквады (пул) или ручная привязка</span></label>
                 <div class="sq-grid">
-                    <label class="sq-item"><input type="checkbox" name="squads[]" value="__manual__"><span class="sq-n">🔧 Ручная привязка</span><span class="muted" style="font-size:.74rem">в обход сквадов</span></label>
+                    <label class="sq-item sq-manual"><input type="checkbox" name="squads[]" value="__manual__" checked><span class="sq-mtxt"><span class="sq-n">🔧 Ручная привязка</span><span class="muted" style="font-size:.72rem">в обход сквадов</span></span></label>
                     <?php foreach ($sqcfg_squads as $s): ?>
                         <label class="sq-item"><input type="checkbox" name="squads[]" value="<?= h($s['uuid']) ?>"><span class="sq-n"><?= h($s['name']) ?></span><span class="muted" style="font-size:.78rem"><?= (int) $s['members'] ?></span></label>
                     <?php endforeach; ?>
@@ -253,7 +253,7 @@
                     <div style="margin-bottom:.85rem">
                         <label>Сквады</label>
                         <div class="sq-grid" id="sqedit_chips">
-                            <label class="sq-item"><input type="checkbox" name="squads[]" value="__manual__"><span class="sq-n">🔧 Ручная привязка</span><span class="muted" style="font-size:.74rem">в обход сквадов</span></label>
+                            <label class="sq-item sq-manual"><input type="checkbox" name="squads[]" value="__manual__"><span class="sq-mtxt"><span class="sq-n">🔧 Ручная привязка</span><span class="muted" style="font-size:.72rem">в обход сквадов</span></span></label>
                             <?php foreach ($sqcfg_squads as $s): ?>
                                 <label class="sq-item"><input type="checkbox" name="squads[]" value="<?= h($s['uuid']) ?>"><span class="sq-n"><?= h($s['name']) ?></span><span class="muted" style="font-size:.78rem"><?= (int) $s['members'] ?></span></label>
                             <?php endforeach; ?>
@@ -296,6 +296,9 @@
         .wgpool-tbl td,.wgpool-tbl th{vertical-align:middle}
         .wgpool-tbl .sqcfg-sel{padding:.3rem 2rem .3rem .6rem;font-size:.82rem}
         .wgp-warn{color:var(--c-warn-fg);font-weight:700}
+        .sq-manual{padding-top:.4rem;padding-bottom:.4rem}
+        .sq-manual .sq-mtxt{display:flex;flex-direction:column;justify-content:center;gap:.05rem;flex:1;min-width:0}
+        .sq-manual .sq-n{flex:none;line-height:1.15;font-size:.86rem}
     </style>
     <?php include __DIR__ . '/_sqcfg_js.php'; ?>
     <script>
