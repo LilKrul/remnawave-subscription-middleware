@@ -859,10 +859,11 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && is_auth()) {
     if ($action === 'pool_manual_add') {
         $cid = (int) ($_POST['config_id'] ?? 0);
         $su  = trim($_POST['short_uuid'] ?? '');
+        $hw  = trim($_POST['hwid'] ?? '');
         if ($cid <= 0 || $su === '') {
             flash('Выберите конфиг и пользователя');
         } else {
-            [$pok, $perr] = wglease_manual_add($cid, $su);
+            [$pok, $perr] = wglease_manual_add($cid, $su, $hw);
             flash($pok ? 'Конфиг закреплён за пользователем' : ('Не удалось: ' . $perr));
         }
         header('Location: index.php?tab=' . ((($_POST['ret'] ?? '') === 'squad_configs') ? 'squad_configs' : 'wg_pool')); exit();
@@ -993,6 +994,7 @@ $sqcfg_modes = []; $sqcfg_stock = []; $sqcfg_leases = []; $sqcfg_reclaim_days = 
 if ($tab === 'squad_configs' || $tab === 'wg_pool') {
     if (remnawave_url() !== '' && remnawave_token() !== '') $sqcfg_squads = remnawave_internal_squads($sqcfg_squads_err);
     foreach ($sqcfg_squads as $s) $sqcfg_names[$s['uuid']] = $s['name'];
+    $sqcfg_names['__manual__'] = 'Ручная привязка';
     foreach (squadconf_all() as $c) {
         if (in_array((string) ($c['type'] ?? ''), ['wireguard', 'amneziawg'], true)) $sqcfg_wg[] = $c;
         else $sqcfg_simple[] = $c;

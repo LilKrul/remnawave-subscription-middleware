@@ -124,7 +124,13 @@
                     if(!d.ok){ info.textContent = d.error || 'Не найден'; document.getElementById('wgm_short').value = ''; chkReady(); return; }
                     document.getElementById('wgm_short').value = d.user.shortUuid || '';
                     var sqn = (d.user.squads || []).map(function(s){ return NAMES[s.uuid] || s.name || s.uuid; }).join(', ');
-                    info.innerHTML = 'Пользователь: <b>' + (d.user.username || '') + '</b>' + (sqn ? (' · сквады: ' + sqn) : '');
+                    var lim = (d.user.hwidDeviceLimit == null ? '' : (' · лимит устройств: ' + d.user.hwidDeviceLimit));
+                    info.innerHTML = 'Пользователь: <b>' + (d.user.username || '') + '</b>' + lim + (sqn ? (' · сквады: ' + sqn) : '');
+                    var hw = document.getElementById('wgm_hwid');
+                    if(hw){
+                        hw.innerHTML = '<option value="">— любое (на пользователя)</option>';
+                        (d.devices || []).forEach(function(dv){ var o=document.createElement('option'); o.value=dv.hwid; o.textContent=(dv.platform||dv.deviceModel||'')+' · '+(dv.hwid||''); hw.appendChild(o); });
+                    }
                     chkReady();
                 }).catch(function(){ info.textContent = 'Ошибка запроса'; });
             });

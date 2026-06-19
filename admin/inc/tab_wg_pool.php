@@ -28,12 +28,12 @@
             <form method="post" enctype="multipart/form-data" autocomplete="off">
                 <input type="hidden" name="csrf" value="<?= h($token) ?>">
                 <input type="hidden" name="action" value="batch_wg_config">
-                <label>Сквады <span class="muted" style="font-weight:400">— применятся ко всем загружаемым</span></label>
+                <label>Куда <span class="muted" style="font-weight:400">— сквады (пул) или ручная привязка</span></label>
                 <div class="sq-grid">
+                    <label class="sq-item"><input type="checkbox" name="squads[]" value="__manual__"><span class="sq-n">🔧 Ручная привязка</span><span class="muted" style="font-size:.74rem">в обход сквадов</span></label>
                     <?php foreach ($sqcfg_squads as $s): ?>
                         <label class="sq-item"><input type="checkbox" name="squads[]" value="<?= h($s['uuid']) ?>"><span class="sq-n"><?= h($s['name']) ?></span><span class="muted" style="font-size:.78rem"><?= (int) $s['members'] ?></span></label>
                     <?php endforeach; ?>
-                    <?php if (!$sqcfg_squads): ?><span class="muted" style="font-size:.82rem">Сквады не получены — настройте подключение.</span><?php endif; ?>
                 </div>
 
                 <div class="wg-up-grid" style="margin-top:1rem">
@@ -119,7 +119,7 @@
             <span class="coll-hr"><svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></span>
         </button>
         <div class="coll-body">
-            <p class="muted" style="margin-top:0">Жёстко закрепить конфиг за пользователем — он получит именно его, из общей выдачи сквада конфиг исключается. Привязка <b>одна на пользователя</b> (один конфиг на юзера, не на устройство): новая заменяет прежнюю. <b>Важно:</b> один и тот же WG/AWG-конфиг не привязывай разным юзерам — это два устройства на одном ключе и флап; за уникальностью следи сам.</p>
+            <p class="muted" style="margin-top:0">Выбери пользователя и конфиг из группы <b>«Ручная привязка»</b> (загруженные выше с галочкой «Ручная привязка» — в обход сквадов). Закрепить можно на пользователя целиком или на конкретное устройство (hwid). Привязка одна на пользователя/устройство — новая заменяет прежнюю. <b>Важно:</b> один WG/AWG-конфиг не привязывай разным юзерам/устройствам — это два устройства на одном ключе и флап.</p>
             <form method="post" autocomplete="off">
                 <input type="hidden" name="csrf" value="<?= h($token) ?>">
                 <input type="hidden" name="action" value="pool_manual_add">
@@ -134,8 +134,12 @@
                         <label>Конфиг</label>
                         <select name="config_id" id="wgm_cfg" class="sqcfg-sel">
                             <option value="">—</option>
-                            <?php foreach ($sqcfg_wg as $c): if ((int) $c['enabled'] !== 1) continue; ?><option value="<?= (int) $c['id'] ?>"><?= h(($c['name'] !== null && $c['name'] !== '') ? $c['name'] : ('#' . $c['id'])) ?></option><?php endforeach; ?>
+                            <?php foreach ($sqcfg_wg as $c): if ((int) $c['enabled'] !== 1 || !in_array('__manual__', squadconf_squads_of($c), true)) continue; ?><option value="<?= (int) $c['id'] ?>"><?= h(($c['name'] !== null && $c['name'] !== '') ? $c['name'] : ('#' . $c['id'])) ?></option><?php endforeach; ?>
                         </select>
+                    </div>
+                    <div>
+                        <label>Устройство (необязательно)</label>
+                        <select id="wgm_hwid" name="hwid" class="sqcfg-sel"><option value="">— любое (на пользователя)</option></select>
                     </div>
                 </div>
                 <div id="wgm_info" class="muted" style="font-size:.82rem;margin:.6rem 0"></div>
@@ -149,12 +153,13 @@
             <h2 style="font-size:.95rem;margin:1.3rem 0 .5rem">Текущие привязки (<?= count($man) ?>)</h2>
             <?php if (!$man): ?><p class="muted">Пока пусто.</p><?php else: ?>
             <table class="logtbl">
-                <thead><tr><th>Конфиг</th><th>Пользователь</th><th></th></tr></thead>
+                <thead><tr><th>Конфиг</th><th>Пользователь</th><th>Устройство</th><th></th></tr></thead>
                 <tbody>
                 <?php foreach ($man as $l): $lcid = (int) $l['config_id']; ?>
                     <tr>
                         <td><?= $wg_ids[$lcid] !== '' ? h($wg_ids[$lcid]) : ('#' . $lcid) ?></td>
                         <td style="font-family:monospace;font-size:.78rem"><?= h((string) $l['short_uuid']) ?></td>
+                        <td style="font-family:monospace;font-size:.76rem"><?= $l['hwid'] !== null && $l['hwid'] !== '' ? h((string) $l['hwid']) : '<span class="muted">любое</span>' ?></td>
                         <td style="text-align:right">
                             <form method="post" style="margin:0" onsubmit="return uiConfirmForm(this,'Снять привязку?')">
                                 <input type="hidden" name="csrf" value="<?= h($token) ?>">
@@ -248,6 +253,7 @@
                     <div style="margin-bottom:.85rem">
                         <label>Сквады</label>
                         <div class="sq-grid" id="sqedit_chips">
+                            <label class="sq-item"><input type="checkbox" name="squads[]" value="__manual__"><span class="sq-n">🔧 Ручная привязка</span><span class="muted" style="font-size:.74rem">в обход сквадов</span></label>
                             <?php foreach ($sqcfg_squads as $s): ?>
                                 <label class="sq-item"><input type="checkbox" name="squads[]" value="<?= h($s['uuid']) ?>"><span class="sq-n"><?= h($s['name']) ?></span><span class="muted" style="font-size:.78rem"><?= (int) $s['members'] ?></span></label>
                             <?php endforeach; ?>

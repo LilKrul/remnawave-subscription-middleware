@@ -29,12 +29,12 @@
                 <input type="hidden" name="kind" value="simple">
                 <input type="hidden" name="ret" value="squad_configs">
 
-                <label>Сквады <span class="muted" style="font-weight:400">— один или несколько</span></label>
+                <label>Куда <span class="muted" style="font-weight:400">— ручная привязка (по умолчанию) или сквады</span></label>
                 <div class="sq-grid">
+                    <label class="sq-item"><input type="checkbox" name="squads[]" value="__manual__" checked><span class="sq-n">🔧 Ручная привязка</span><span class="muted" style="font-size:.74rem">в обход сквадов</span></label>
                     <?php foreach ($sqcfg_squads as $s): ?>
                         <label class="sq-item"><input type="checkbox" name="squads[]" value="<?= h($s['uuid']) ?>"><span class="sq-n"><?= h($s['name']) ?></span><span class="muted" style="font-size:.78rem"><?= (int) $s['members'] ?></span></label>
                     <?php endforeach; ?>
-                    <?php if (!$sqcfg_squads): ?><span class="muted" style="font-size:.82rem">Сквады не получены — настройте подключение.</span><?php endif; ?>
                 </div>
 
                 <div class="mc-grid" style="margin-top:1rem">
@@ -62,7 +62,7 @@
             <span class="coll-hr"><svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></span>
         </button>
         <div class="coll-body">
-            <p class="muted" style="margin-top:0">Отдать конфиг <b>только одному пользователю</b> (пока его подписка активна): из общей раздачи сквада он при этом исключается. Привязка — <b>одна на пользователя</b>: новая заменяет прежнюю. Конфиг нужно сначала добавить выше.</p>
+            <p class="muted" style="margin-top:0">Выбери пользователя и конфиг из группы <b>«Ручная привязка»</b> (конфиги, добавленные выше с галочкой «Ручная привязка» — они идут в обход сквадов, только привязанным юзерам). Привязка <b>одна на пользователя</b>: новая заменяет прежнюю. Действует, пока подписка активна.</p>
             <form method="post" autocomplete="off">
                 <input type="hidden" name="csrf" value="<?= h($token) ?>">
                 <input type="hidden" name="action" value="pool_manual_add">
@@ -77,7 +77,7 @@
                         <label>Конфиг</label>
                         <select name="config_id" id="wgm_cfg" class="sqcfg-sel">
                             <option value="">—</option>
-                            <?php foreach ($sqcfg_simple as $c): if ((int) $c['enabled'] !== 1) continue; ?><option value="<?= (int) $c['id'] ?>"><?= h(($c['name'] !== null && $c['name'] !== '') ? $c['name'] : ('#' . $c['id'])) ?></option><?php endforeach; ?>
+                            <?php foreach ($sqcfg_simple as $c): if ((int) $c['enabled'] !== 1 || !in_array('__manual__', squadconf_squads_of($c), true)) continue; ?><option value="<?= (int) $c['id'] ?>"><?= h(($c['name'] !== null && $c['name'] !== '') ? $c['name'] : ('#' . $c['id'])) ?></option><?php endforeach; ?>
                         </select>
                     </div>
                 </div>
@@ -191,6 +191,7 @@
                     <div style="margin-bottom:.85rem">
                         <label>Сквады</label>
                         <div class="sq-grid" id="sqedit_chips">
+                            <label class="sq-item"><input type="checkbox" name="squads[]" value="__manual__"><span class="sq-n">🔧 Ручная привязка</span><span class="muted" style="font-size:.74rem">в обход сквадов</span></label>
                             <?php foreach ($sqcfg_squads as $s): ?>
                                 <label class="sq-item"><input type="checkbox" name="squads[]" value="<?= h($s['uuid']) ?>"><span class="sq-n"><?= h($s['name']) ?></span><span class="muted" style="font-size:.78rem"><?= (int) $s['members'] ?></span></label>
                             <?php endforeach; ?>
