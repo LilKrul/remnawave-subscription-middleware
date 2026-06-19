@@ -147,6 +147,10 @@ function wglease_pick($pool_id, $subkey, $short_uuid, $hwid, array $cands) {
     }
     $cfg = wglease_assign($p, $pool_id, $lease_key, $short_uuid, $hwid, $cand_ids, $by_id, $now);
     if ($cfg === null) {
+        try {
+            if ($hwid === '') $p->prepare('DELETE FROM wg_lease WHERE pool_id = ? AND manual = 0 AND hwid IS NOT NULL')->execute([$pool_id]);
+            else $p->prepare('DELETE FROM wg_lease WHERE pool_id = ? AND manual = 0 AND hwid IS NULL')->execute([$pool_id]);
+        } catch (Throwable $e) {}
         wglease_reclaim($pool_id);
         $cfg = wglease_assign($p, $pool_id, $lease_key, $short_uuid, $hwid, $cand_ids, $by_id, $now);
     }
@@ -185,6 +189,14 @@ function wglease_reclaim($pool_id) {
     if (!($p = db())) return;
     $cut = time() - wglease_reclaim_days() * 86400;
     try { $p->prepare('DELETE FROM wg_lease WHERE pool_id = ? AND manual = 0 AND seen_ts < ?')->execute([(string) $pool_id, $cut]); }
+    catch (Throwable $e) {}
+}
+
+function wglease_clear_pool_auto($pool_id) {
+    wglease_ensure();
+    $pool_id = (string) $pool_id;
+    if (!($p = db()) || $pool_id === '') return;
+    try { $p->prepare('DELETE FROM wg_lease WHERE pool_id = ? AND manual = 0')->execute([$pool_id]); }
     catch (Throwable $e) {}
 }
 

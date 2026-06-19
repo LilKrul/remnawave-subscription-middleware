@@ -800,7 +800,12 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && is_auth()) {
 
     if ($action === 'save_pool_modes') {
         $modes = is_array($_POST['pool_mode'] ?? null) ? $_POST['pool_mode'] : [];
-        foreach ($modes as $sq => $m) wglease_set_mode((string) $sq, (string) $m);
+        foreach ($modes as $sq => $m) {
+            $sq = (string) $sq;
+            $old_mode = wglease_mode($sq);
+            wglease_set_mode($sq, (string) $m);
+            if (wglease_mode($sq) !== $old_mode) wglease_clear_pool_auto($sq);
+        }
         set_setting('wgpool_reclaim_days', (string) max(1, (int) ($_POST['wgpool_reclaim_days'] ?? 14)));
         flash('Режимы пула сохранены');
         header('Location: index.php?tab=squad_configs'); exit();
