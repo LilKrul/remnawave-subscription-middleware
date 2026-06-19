@@ -45,6 +45,22 @@ $short_uuid = (string) ($data['shortUuid'] ?? '');
 $username   = isset($data['username']) ? (string) $data['username'] : null;
 $status     = isset($data['status'])   ? (string) $data['status']   : null;
 
+if ($event === 'user_hwid_devices.added' || $event === 'user_hwid_devices.deleted') {
+    $hw_uuid  = (string) ($data['userUuid'] ?? '');
+    $hw_hwid  = (string) ($data['hwid'] ?? '');
+    $hw_short = (string) ($data['shortUuid'] ?? $short_uuid);
+    $hw_plat  = (string) ($data['platform'] ?? '');
+    if ($event === 'user_hwid_devices.added') wglease_hwid_upsert($hw_uuid, $hw_hwid, $hw_short, $hw_plat);
+    else wglease_hwid_delete($hw_uuid, $hw_hwid);
+    if ($hw_short !== '') squadconf_cache_drop($hw_short);
+    log_webhook($event, ($hw_short !== '' ? $hw_short : null), $username, null, true, $event === 'user_hwid_devices.added' ? 'hwid_add' : 'hwid_del');
+    http_response_code(200);
+    echo 'OK';
+    if (function_exists('fastcgi_finish_request')) fastcgi_finish_request();
+    try { forward_webhook($raw, $event); } catch (Throwable $e) { error_log('submw forward_webhook: ' . $e->getMessage()); }
+    exit();
+}
+
 if ($short_uuid === '' && !empty($data['subscriptionUrl'])) {
     $segs = path_segments(parse_url((string) $data['subscriptionUrl'], PHP_URL_PATH) ?? '');
     if ($segs) $short_uuid = end($segs);
@@ -67,6 +83,7 @@ if ($short_uuid !== '') {
     if ($event === 'user.deleted') {
         delete_override('shortuuid', $short_uuid, 'webhook');
         grace_cleanup($short_uuid);
+        wglease_purge_user($short_uuid);
         $action = 'clear';
     } elseif ($is_active) {
         $renewed = grace_on_renew($short_uuid, (string) ($data['expireAt'] ?? ''));
