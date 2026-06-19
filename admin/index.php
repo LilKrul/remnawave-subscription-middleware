@@ -857,15 +857,13 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && is_auth()) {
     }
 
     if ($action === 'pool_manual_add') {
-        $sq  = trim($_POST['pool_squad'] ?? '');
         $cid = (int) ($_POST['config_id'] ?? 0);
         $su  = trim($_POST['short_uuid'] ?? '');
-        $hw  = trim($_POST['hwid'] ?? '');
-        if ($sq === '' || $cid <= 0 || $su === '') {
-            flash('Выберите сквад, конфиг и пользователя');
+        if ($cid <= 0 || $su === '') {
+            flash('Выберите конфиг и пользователя');
         } else {
-            [$pok, $perr] = wglease_manual_add($sq, $cid, $su, $hw);
-            flash($pok ? 'Ручная привязка добавлена' : ('Не удалось: ' . $perr));
+            [$pok, $perr] = wglease_manual_add($cid, $su);
+            flash($pok ? 'Конфиг закреплён за пользователем' : ('Не удалось: ' . $perr));
         }
         header('Location: index.php?tab=' . ((($_POST['ret'] ?? '') === 'squad_configs') ? 'squad_configs' : 'wg_pool')); exit();
     }
@@ -991,7 +989,7 @@ if ($tab === 'subst' && remnawave_url() !== '' && remnawave_token() !== '') {
 
 $sqcfg_squads = []; $sqcfg_squads_err = ''; $sqcfg_names = [];
 $sqcfg_simple = []; $sqcfg_wg = [];
-$sqcfg_modes = []; $sqcfg_stock = []; $sqcfg_pool_cfgs = []; $sqcfg_simple_pool = []; $sqcfg_leases = []; $sqcfg_reclaim_days = 14; $sqcfg_sizing = ['rows' => [], 'ts' => 0];
+$sqcfg_modes = []; $sqcfg_stock = []; $sqcfg_leases = []; $sqcfg_reclaim_days = 14; $sqcfg_sizing = ['rows' => [], 'ts' => 0];
 if ($tab === 'squad_configs' || $tab === 'wg_pool') {
     if (remnawave_url() !== '' && remnawave_token() !== '') $sqcfg_squads = remnawave_internal_squads($sqcfg_squads_err);
     foreach ($sqcfg_squads as $s) $sqcfg_names[$s['uuid']] = $s['name'];
@@ -1001,23 +999,12 @@ if ($tab === 'squad_configs' || $tab === 'wg_pool') {
     }
     $sqcfg_leases = wglease_list();
 }
-if ($tab === 'squad_configs') {
-    foreach ($sqcfg_simple as $c) {
-        if ((int) $c['enabled'] !== 1) continue;
-        foreach (squadconf_squads_of($c) as $sq) {
-            $sqcfg_simple_pool[$sq][] = ['id' => (int) $c['id'], 'name' => (string) ($c['name'] ?? ''), 'type' => (string) ($c['type'] ?? '')];
-        }
-    }
-}
 if ($tab === 'wg_pool') {
     $sqcfg_reclaim_days = wglease_reclaim_days();
     foreach ($sqcfg_squads as $s) $sqcfg_modes[$s['uuid']] = wglease_mode($s['uuid']);
     foreach ($sqcfg_wg as $c) {
         if ((int) $c['enabled'] !== 1) continue;
-        foreach (squadconf_squads_of($c) as $sq) {
-            $sqcfg_stock[$sq] = ($sqcfg_stock[$sq] ?? 0) + 1;
-            $sqcfg_pool_cfgs[$sq][] = ['id' => (int) $c['id'], 'name' => (string) ($c['name'] ?? ''), 'type' => (string) ($c['type'] ?? '')];
-        }
+        foreach (squadconf_squads_of($c) as $sq) $sqcfg_stock[$sq] = ($sqcfg_stock[$sq] ?? 0) + 1;
     }
     $sqcfg_sizing = wglease_sizing_cached();
 }

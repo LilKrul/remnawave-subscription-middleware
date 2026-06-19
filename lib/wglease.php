@@ -87,10 +87,12 @@ function wglease_select($short_uuid, $hwid, array $u_squads) {
         }
     }
     $out = []; $added = [];
+    $bound = wglease_manual_bound_ids();
     foreach ($u_squads as $sq) {
         if (wglease_mode($sq) !== 'shared') continue;
         foreach ($by_squad[$sq] ?? [] as $c) {
             $id = (int) $c['id'];
+            if (isset($bound[$id])) continue;
             if (!isset($added[$id])) { $added[$id] = true; $out[] = $c; }
         }
     }
@@ -99,8 +101,9 @@ function wglease_select($short_uuid, $hwid, array $u_squads) {
         if ($mode === 'shared') continue;
         $cands = [];
         foreach ($by_squad[$sq] ?? [] as $c) {
-            if (isset($added[(int) $c['id']])) continue;
-            if ((string) ($c['type'] ?? '') === 'vless') { $added[(int) $c['id']] = true; $out[] = $c; }
+            $id = (int) $c['id'];
+            if (isset($added[$id]) || isset($bound[$id])) continue;
+            if ((string) ($c['type'] ?? '') === 'vless') { $added[$id] = true; $out[] = $c; }
             else $cands[] = $c;
         }
         if (!$cands) continue;
@@ -209,18 +212,17 @@ function wglease_clear_pool_auto($pool_id) {
     catch (Throwable $e) {}
 }
 
-function wglease_manual_add($pool_id, $config_id, $short_uuid, $hwid) {
+function wglease_manual_add($config_id, $short_uuid) {
     wglease_ensure();
-    $pool_id = (string) $pool_id; $config_id = (int) $config_id;
-    $short_uuid = trim((string) $short_uuid); $hwid = trim((string) $hwid);
-    if (!($p = db()) || $pool_id === '' || $config_id <= 0 || $short_uuid === '') return [false, 'Не хватает данных'];
-    $key = wglease_key($pool_id, $hwid !== '' ? ('d:' . $short_uuid . '|' . $hwid) : ('s:' . $short_uuid));
+    $config_id = (int) $config_id; $short_uuid = trim((string) $short_uuid);
+    if (!($p = db()) || $config_id <= 0 || $short_uuid === '') return [false, 'Не хватает данных'];
+    $pool = 'manual:' . $short_uuid;
+    $key = wglease_key($pool, 'u:' . $short_uuid);
     $now = time();
     try {
-        $p->prepare('DELETE FROM wg_lease WHERE lease_key = ?')->execute([$key]);
-        $p->prepare('DELETE FROM wg_lease WHERE pool_id = ? AND config_id = ?')->execute([$pool_id, $config_id]);
-        $ins = $p->prepare('INSERT INTO wg_lease (pool_id, lease_key, config_id, short_uuid, hwid, manual, created_ts, seen_ts) VALUES (?, ?, ?, ?, ?, 1, ?, ?)');
-        $ins->execute([$pool_id, $key, $config_id, $short_uuid, ($hwid !== '' ? $hwid : null), $now, $now]);
+        $p->prepare('DELETE FROM wg_lease WHERE manual = 1 AND short_uuid = ?')->execute([$short_uuid]);
+        $ins = $p->prepare('INSERT INTO wg_lease (pool_id, lease_key, config_id, short_uuid, hwid, manual, created_ts, seen_ts) VALUES (?, ?, ?, ?, NULL, 1, ?, ?)');
+        $ins->execute([$pool, $key, $config_id, $short_uuid, $now, $now]);
         return [true, ''];
     } catch (Throwable $e) { return [false, $e->getMessage()]; }
 }
@@ -290,6 +292,15 @@ function wglease_purge_user($short_uuid) {
     if (!($p = db()) || $short_uuid === '') return;
     try { $p->prepare('DELETE FROM wg_lease WHERE manual = 0 AND short_uuid = ?')->execute([$short_uuid]); }
     catch (Throwable $e) {}
+}
+
+function wglease_manual_bound_ids() {
+    wglease_ensure();
+    if (!($p = db())) return [];
+    $ids = [];
+    try { foreach ($p->query('SELECT DISTINCT config_id FROM wg_lease WHERE manual = 1') as $r) $ids[(int) $r['config_id']] = true; }
+    catch (Throwable $e) {}
+    return $ids;
 }
 
 function wglease_manual_for_user($short_uuid, $hwid) {

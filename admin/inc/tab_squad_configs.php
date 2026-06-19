@@ -62,7 +62,7 @@
             <span class="coll-hr"><svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></span>
         </button>
         <div class="coll-body">
-            <p class="muted" style="margin-top:0">Отдать конкретный простой конфиг только одному пользователю (пока его подписка активна). Конфиг должен быть добавлен выше и привязан к скваду.</p>
+            <p class="muted" style="margin-top:0">Отдать конфиг <b>только одному пользователю</b> (пока его подписка активна): из общей раздачи сквада он при этом исключается. Привязка — <b>одна на пользователя</b>: новая заменяет прежнюю. Конфиг нужно сначала добавить выше.</p>
             <form method="post" autocomplete="off">
                 <input type="hidden" name="csrf" value="<?= h($token) ?>">
                 <input type="hidden" name="action" value="pool_manual_add">
@@ -70,19 +70,15 @@
                 <input type="hidden" name="short_uuid" id="wgm_short">
                 <div class="sqcfg-grid">
                     <div>
-                        <label>Сквад</label>
-                        <select name="pool_squad" id="wgm_squad" class="sqcfg-sel">
-                            <option value="">—</option>
-                            <?php foreach ($sqcfg_squads as $s): ?><option value="<?= h($s['uuid']) ?>"><?= h($s['name']) ?></option><?php endforeach; ?>
-                        </select>
+                        <label>Пользователь (shortUuid или имя)</label>
+                        <div style="display:flex;gap:.4rem"><input type="text" id="wgm_q" placeholder="shortUuid / username" style="flex:1;box-sizing:border-box"><button type="button" class="sqcfg-btn" id="wgm_find">Найти</button></div>
                     </div>
                     <div>
                         <label>Конфиг</label>
-                        <select name="config_id" id="wgm_cfg" class="sqcfg-sel"><option value="">—</option></select>
-                    </div>
-                    <div>
-                        <label>Пользователь (shortUuid или имя)</label>
-                        <div style="display:flex;gap:.4rem"><input type="text" id="wgm_q" placeholder="shortUuid / username" style="flex:1;box-sizing:border-box"><button type="button" class="sqcfg-btn" id="wgm_find">Найти</button></div>
+                        <select name="config_id" id="wgm_cfg" class="sqcfg-sel">
+                            <option value="">—</option>
+                            <?php foreach ($sqcfg_simple as $c): if ((int) $c['enabled'] !== 1) continue; ?><option value="<?= (int) $c['id'] ?>"><?= h(($c['name'] !== null && $c['name'] !== '') ? $c['name'] : ('#' . $c['id'])) ?></option><?php endforeach; ?>
+                        </select>
                     </div>
                 </div>
                 <div id="wgm_info" class="muted" style="font-size:.82rem;margin:.6rem 0"></div>
@@ -96,11 +92,10 @@
             <h2 style="font-size:.95rem;margin:1.3rem 0 .5rem">Закреплённые конфиги (<?= count($man) ?>)</h2>
             <?php if (!$man): ?><p class="muted">Пока пусто.</p><?php else: ?>
             <table class="logtbl">
-                <thead><tr><th>Сквад</th><th>Конфиг</th><th>Пользователь</th><th></th></tr></thead>
+                <thead><tr><th>Конфиг</th><th>Пользователь</th><th></th></tr></thead>
                 <tbody>
                 <?php foreach ($man as $l): $lcid = (int) $l['config_id']; ?>
                     <tr>
-                        <td><?= h($sqcfg_names[$l['pool_id']] ?? $l['pool_id']) ?></td>
                         <td><?= $simple_ids[$lcid] !== '' ? h($simple_ids[$lcid]) : ('#' . $lcid) ?></td>
                         <td style="font-family:monospace;font-size:.78rem"><?= h((string) $l['short_uuid']) ?></td>
                         <td style="text-align:right">
@@ -243,5 +238,5 @@
     window.SQCFG = <?= json_encode($sqcfg_edit ?? [], JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
     sqcfgInitEdit();
     sqcfgInitPager('sqcfgTbl', 'sqcfgPager', 'sqcfgSize', 'sqcfg_size');
-    sqcfgInitManual(<?= json_encode($sqcfg_simple_pool ?? [], JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT) ?>, <?= json_encode($sqcfg_names, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT) ?>);
+    sqcfgInitManual(<?= json_encode($sqcfg_names, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT) ?>);
     </script>

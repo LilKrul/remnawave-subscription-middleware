@@ -119,7 +119,7 @@
             <span class="coll-hr"><svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></span>
         </button>
         <div class="coll-body">
-            <p class="muted" style="margin-top:0">Жёстко закрепить конкретный конфиг за пользователем и, по желанию, за конкретным устройством. Приоритетнее авто-выдачи и не возвращается в пул. <b>Выбор устройства не обязателен</b> — без него конфиг закрепляется за пользователем целиком.</p>
+            <p class="muted" style="margin-top:0">Жёстко закрепить конфиг за пользователем — он получит именно его, из общей выдачи сквада конфиг исключается. Привязка <b>одна на пользователя</b> (один конфиг на юзера, не на устройство): новая заменяет прежнюю. <b>Важно:</b> один и тот же WG/AWG-конфиг не привязывай разным юзерам — это два устройства на одном ключе и флап; за уникальностью следи сам.</p>
             <form method="post" autocomplete="off">
                 <input type="hidden" name="csrf" value="<?= h($token) ?>">
                 <input type="hidden" name="action" value="pool_manual_add">
@@ -127,23 +127,15 @@
                 <input type="hidden" name="short_uuid" id="wgm_short">
                 <div class="sqcfg-grid">
                     <div>
-                        <label>Сквад (пул)</label>
-                        <select name="pool_squad" id="wgm_squad" class="sqcfg-sel">
-                            <option value="">—</option>
-                            <?php foreach ($sqcfg_squads as $s): ?><option value="<?= h($s['uuid']) ?>"><?= h($s['name']) ?></option><?php endforeach; ?>
-                        </select>
-                    </div>
-                    <div>
-                        <label>Конфиг из пула</label>
-                        <select name="config_id" id="wgm_cfg" class="sqcfg-sel"><option value="">—</option></select>
-                    </div>
-                    <div>
                         <label>Пользователь (shortUuid или имя)</label>
                         <div style="display:flex;gap:.4rem"><input type="text" id="wgm_q" placeholder="shortUuid / username" style="flex:1;box-sizing:border-box"><button type="button" class="sqcfg-btn" id="wgm_find">Найти</button></div>
                     </div>
                     <div>
-                        <label>Устройство (необязательно)</label>
-                        <select id="wgm_hwid" name="hwid" class="sqcfg-sel"><option value="">— любое (на пользователя)</option></select>
+                        <label>Конфиг</label>
+                        <select name="config_id" id="wgm_cfg" class="sqcfg-sel">
+                            <option value="">—</option>
+                            <?php foreach ($sqcfg_wg as $c): if ((int) $c['enabled'] !== 1) continue; ?><option value="<?= (int) $c['id'] ?>"><?= h(($c['name'] !== null && $c['name'] !== '') ? $c['name'] : ('#' . $c['id'])) ?></option><?php endforeach; ?>
+                        </select>
                     </div>
                 </div>
                 <div id="wgm_info" class="muted" style="font-size:.82rem;margin:.6rem 0"></div>
@@ -157,14 +149,12 @@
             <h2 style="font-size:.95rem;margin:1.3rem 0 .5rem">Текущие привязки (<?= count($man) ?>)</h2>
             <?php if (!$man): ?><p class="muted">Пока пусто.</p><?php else: ?>
             <table class="logtbl">
-                <thead><tr><th>Сквад</th><th>Конфиг</th><th>Пользователь</th><th>Устройство</th><th></th></tr></thead>
+                <thead><tr><th>Конфиг</th><th>Пользователь</th><th></th></tr></thead>
                 <tbody>
                 <?php foreach ($man as $l): $lcid = (int) $l['config_id']; ?>
                     <tr>
-                        <td><?= h($sqcfg_names[$l['pool_id']] ?? $l['pool_id']) ?></td>
                         <td><?= $wg_ids[$lcid] !== '' ? h($wg_ids[$lcid]) : ('#' . $lcid) ?></td>
                         <td style="font-family:monospace;font-size:.78rem"><?= h((string) $l['short_uuid']) ?></td>
-                        <td style="font-family:monospace;font-size:.76rem"><?= $l['hwid'] !== null && $l['hwid'] !== '' ? h((string) $l['hwid']) : '<span class="muted">любое</span>' ?></td>
                         <td style="text-align:right">
                             <form method="post" style="margin:0" onsubmit="return uiConfirmForm(this,'Снять привязку?')">
                                 <input type="hidden" name="csrf" value="<?= h($token) ?>">
@@ -309,10 +299,9 @@
     sqcfgInitFileBtn('wgFiles', 'wgFilesInfo');
     (function(){
         var NAMES = <?= json_encode($sqcfg_names, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
-        var POOL = <?= json_encode($sqcfg_pool_cfgs ?? [], JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
         var SIZING = <?= json_encode($sqcfg_sizing['rows'] ?? [], JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
         var SIZING_TS = <?= (int) ($sqcfg_sizing['ts'] ?? 0) ?>;
-        sqcfgInitManual(POOL, NAMES);
+        sqcfgInitManual(NAMES);
         function wgpFmtAgo(ts){ if(!ts) return ''; var s=Math.max(0,Math.floor(Date.now()/1000-ts)); if(s<60) return 'только что'; if(s<3600) return Math.floor(s/60)+' мин назад'; if(s<86400) return Math.floor(s/3600)+' ч назад'; return Math.floor(s/86400)+' дн назад'; }
         function wgpApply(rows){
             document.querySelectorAll('.wgp-u').forEach(function(td){
