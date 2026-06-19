@@ -488,6 +488,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && is_auth()) {
         set_setting('grace_days', ($_POST['grace_days'] ?? '') === '' ? '' : (string) max(0, (int) $_POST['grace_days']));
         set_setting('grace_external_enabled', isset($_POST['grace_external_enabled']) ? '1' : '0');
         set_setting('grace_external_squad_uuid', trim($_POST['grace_external_squad_uuid'] ?? ''));
+        set_setting('grace_announce', grace_announce_normalize($_POST['grace_announce'] ?? ''));
         flash('Настройки грейс-сквада сохранены');
         header('Location: index.php?tab=subst'); exit();
     }

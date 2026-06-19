@@ -244,9 +244,13 @@ foreach ($grabbed_headers as $name => $value) {
     if (!in_array($name, $unsafe, true)) header($name . ': ' . $value);
 }
 emit_response_headers();
+$is_grace = ($short_uuid !== '' && grace_is_active($short_uuid));
+if ($is_grace && !grace_external_active() && ($ga = grace_announce()) !== '') {
+    header('announce: ' . rules_encode_value('announce', $ga));
+}
 echo $response;
 if (!$skip_log) {
-    $log_decision = grace_is_active($short_uuid) ? 'grace' : $decision;
+    $log_decision = $is_grace ? 'grace' : $decision;
     if (!$is_page && reqlog_is_real($grabbed_headers, $log_decision, $short_ov)) {
         $GLOBALS['submw_real_sub'] = true;
         log_request($ip, $short_uuid, $path, $ua, $log_decision, $expire_ts, $current_hwid);

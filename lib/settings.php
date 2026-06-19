@@ -82,6 +82,8 @@ function grace_traffic_strategy() {
 
 function grace_hwid_limit_raw() { return trim((string) setting('grace_hwid_limit', '')); }
 
+function grace_announce() { return (string) setting('grace_announce', ''); }
+
 function grace_days() {
     $v = setting('grace_days', '');
     return $v === '' ? expired_grace_days() : max(0, (int) $v);

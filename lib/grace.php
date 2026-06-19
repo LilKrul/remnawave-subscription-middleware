@@ -29,6 +29,14 @@ function ensure_grace_table() {
 
 function grace_iso($ts) { return gmdate('Y-m-d\TH:i:s.000\Z', (int) $ts); }
 
+function grace_announce_normalize($raw) {
+    $raw   = str_replace(["\r\n", "\r"], "\n", (string) $raw);
+    $lines = array_map(fn($l) => trim($l), explode("\n", $raw));
+    while ($lines && $lines[0] === '') array_shift($lines);
+    while ($lines && end($lines) === '') array_pop($lines);
+    return mb_substr(implode('\n', $lines), 0, 200);
+}
+
 function grace_find($short) {
     ensure_grace_table();
     if (!($p = db()) || $short === '') return null;

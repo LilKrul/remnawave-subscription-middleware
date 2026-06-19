@@ -61,6 +61,21 @@
                 <?php endforeach; ?>
                 </div>
             <?php endif; ?>
+            <label style="margin-top:1.5rem;display:block">Фолбэк: анонс из прослойки <span class="hint">если внешний сквад не задан</span></label>
+            <p class="muted" style="margin:.2rem 0 .7rem">Прослойка сама подставит этот <code>announce</code> на время грейса (поверх анонса панели). При активном внешнем скваде — игнорируется.</p>
+            <div class="ga-wrap">
+                <div class="ga-edit">
+                    <textarea name="grace_announce" id="ga-input" rows="4" maxlength="400" placeholder="Подписка истекла &#10;Продлите — доступ вернётся&#10;Поддержка: @your_bot"><?= h(str_replace('\n', "\n", grace_announce())) ?></textarea>
+                    <p class="muted" style="font-size:.8rem;margin:.5rem 0 0">Каждая строка — отдельный перенос (koala рисует построчно; у Happ — одной строкой). Кириллица кодируется в base64 сама, лимит 200 символов.</p>
+                </div>
+                <div class="ga-prev">
+                    <label style="margin-top:0">Превью в koala</label>
+                    <div class="ga-koala">
+                        <div class="ga-k-head"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l18-5v12L3 14v-3z"/><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"/></svg>Объявление</div>
+                        <div class="ga-k-body" id="ga-prev"></div>
+                    </div>
+                </div>
+            </div>
             <div style="margin-top:1.25rem"><button type="submit">💾 Сохранить</button></div>
         </form>
     </div>
@@ -131,12 +146,30 @@
         </div>
     </section>
     <style>
+    .ga-wrap{display:grid;grid-template-columns:1fr 280px;gap:1.1rem;align-items:start}
+    @media(max-width:720px){.ga-wrap{grid-template-columns:1fr}}
+    .ga-edit textarea{width:100%;box-sizing:border-box;resize:vertical;font-family:inherit;font-size:.9rem;line-height:1.5;padding:.6rem .75rem;border:1px solid var(--line);border-radius:9px;background:var(--bg2);color:var(--text)}
+    .ga-edit textarea:focus{outline:none;border-color:var(--accent)}
+    .ga-koala{border:1px solid var(--line);border-radius:13px;overflow:hidden;background:var(--bg2);box-shadow:var(--shadow)}
+    .ga-k-head{display:flex;align-items:center;gap:.45rem;padding:.55rem .85rem;font-weight:600;font-size:.82rem;background:var(--accent);color:var(--accent-text)}
+    .ga-k-body{padding:.75rem .9rem;font-size:.87rem;line-height:1.6;color:var(--text);min-height:3.4rem;word-break:break-word}
+    .ga-k-empty{color:var(--muted);font-style:italic}
     .codeblk{position:relative;margin:.5rem 0}
     .codeblk pre{margin:0;background:var(--bg2);border:1px solid var(--line);border-radius:9px;padding:2.3rem .9rem .85rem;overflow:auto;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:.78rem;line-height:1.5;white-space:pre;color:var(--text)}
     .codeblk .copybtn{position:absolute;top:.45rem;right:.45rem;padding:.28rem .62rem;font-size:.72rem;border:1px solid var(--line);border-radius:7px;background:var(--card);color:var(--text);cursor:pointer;font-weight:600;line-height:1}
     .codeblk .copybtn:hover{filter:brightness(1.1)}
     </style>
     <script>
+    (function(){
+        var inp = document.getElementById('ga-input'), pv = document.getElementById('ga-prev');
+        if (!inp || !pv) return;
+        function esc(s){ return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+        function upd(){
+            var t = inp.value.replace(/\r\n?/g,'\n').replace(/^\n+|\n+$/g,'');
+            pv.innerHTML = t === '' ? '<span class="ga-k-empty">— анонс выключен —</span>' : esc(t).replace(/\n/g,'<br>');
+        }
+        inp.addEventListener('input', upd); upd();
+    })();
     function copyGraceCfg(btn){
         var el = document.getElementById('grace-inbound-json');
         if (!el) return;
