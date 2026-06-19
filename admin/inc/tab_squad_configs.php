@@ -1,3 +1,19 @@
+    <section class="coll" data-coll="wgpool_help">
+        <button type="button" class="coll-head" onclick="collToggle(this)"><span>Как работает пул и почему так</span>
+            <span class="coll-hr"><svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></span>
+        </button>
+        <div class="coll-body">
+            <p class="muted" style="margin-top:0">WireGuard/AmneziaWG используют публичный ключ как идентификатор пира: у пира один текущий endpoint, и при одновременной работе двух устройств с <b>одним</b> ключом endpoint перетирается на «последнего» — соединения флапают. Поэтому одно одновременное устройство = один ключ = один peer на сервере.</p>
+            <p class="muted">Прослойка ключи не генерит (их делают в Amnezia / WG-панели / CLI), а <b>раздаёт</b> готовые конфиги из пула, закрепляя за подписчиком или устройством отдельный, никем больше не используемый <code>.conf</code>. Закрепление «липкое»: после импорта клиент держит ключ, пока сам не перечитает подписку.</p>
+            <ul class="muted" style="margin:.2rem 0 0;padding-left:1.1rem;line-height:1.65">
+                <li><b>Общий</b> — конфиги сквада дописываются всем подписчикам (как раньше). Для VLESS или когда уникальность не нужна.</li>
+                <li><b>На пользователя</b> — из пула выдаётся один конфиг на подписчика; hwid не нужен.</li>
+                <li><b>На устройство</b> — один конфиг на пару пользователь+устройство (hwid). Клиент не прислал hwid → конфиг не подмешиваем (иначе флап).</li>
+            </ul>
+            <p class="muted" style="margin-bottom:0">Конфигов в пуле меньше, чем нужно устройств → части подписчиков доп-WG просто не достанется (без флапа). Смотри расчёт потребности ниже.</p>
+        </div>
+    </section>
+
     <section class="coll" data-coll="sqcfg_add">
         <button type="button" class="coll-head" onclick="collToggle(this)"><span>Доп. конфиги по внутреннему скваду</span>
             <span class="coll-hr"><svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></span>
@@ -232,5 +248,180 @@
         }
         document.querySelectorAll('.sqcfg-edit').forEach(function(b){ b.addEventListener('click',function(){ openEdit(b.dataset.id); }); });
         document.addEventListener('keydown',function(e){ if(e.key === 'Escape') sqEditClose(); });
+    })();
+    </script>
+
+    <section class="coll" data-coll="wgpool_modes">
+        <button type="button" class="coll-head" onclick="collToggle(this)"><span>Режим пула по сквадам</span>
+            <span class="coll-hr"><svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></span>
+        </button>
+        <div class="coll-body">
+            <p class="muted" style="margin-top:0">Как раздаются конфиги каждого сквада. «Потребность» считается по панели: фактические устройства из базы hwid и потолок по лимиту устройств.</p>
+            <?php if (!$sqcfg_squads): ?>
+                <div class="warn">Сквады не получены — настройте подключение к панели.</div>
+            <?php else: ?>
+            <form method="post">
+                <input type="hidden" name="csrf" value="<?= h($token) ?>">
+                <input type="hidden" name="action" value="save_pool_modes">
+                <table class="logtbl wgpool-tbl">
+                    <thead><tr><th>Сквад</th><th>Режим</th><th>В пуле</th><th>Активных / всего</th><th>Устройств</th><th>Потолок</th></tr></thead>
+                    <tbody>
+                    <?php foreach ($sqcfg_squads as $s): $pu = $s['uuid']; $pm = $sqcfg_modes[$pu] ?? 'shared'; ?>
+                        <tr>
+                            <td><?= h($s['name']) ?></td>
+                            <td>
+                                <select name="pool_mode[<?= h($pu) ?>]" class="sqcfg-sel">
+                                    <option value="shared"<?= $pm === 'shared' ? ' selected' : '' ?>>Общий</option>
+                                    <option value="users"<?= $pm === 'users' ? ' selected' : '' ?>>На пользователя</option>
+                                    <option value="devices"<?= $pm === 'devices' ? ' selected' : '' ?>>На устройство</option>
+                                </select>
+                            </td>
+                            <td><?= (int) ($sqcfg_stock[$pu] ?? 0) ?></td>
+                            <td class="wgp-u" data-su="<?= h($pu) ?>">—</td>
+                            <td class="wgp-d" data-su="<?= h($pu) ?>">—</td>
+                            <td class="wgp-c" data-su="<?= h($pu) ?>">—</td>
+                        </tr>
+                    <?php endforeach; ?>
+                    </tbody>
+                </table>
+                <div style="display:flex;gap:.75rem;align-items:center;flex-wrap:wrap;margin-top:1rem">
+                    <button type="submit" class="btn">Сохранить режимы</button>
+                    <button type="button" class="sqcfg-btn" id="wgpCalc">Рассчитать потребность</button>
+                    <label class="muted" style="display:flex;align-items:center;gap:.4rem;margin:0;font-weight:400">авто-возврат слота через
+                        <input type="number" name="wgpool_reclaim_days" value="<?= (int) $sqcfg_reclaim_days ?>" min="1" max="365" style="width:5rem;box-sizing:border-box"> дн. неактивности</label>
+                </div>
+                <div id="wgpCalcMsg" class="muted" style="font-size:.8rem;margin-top:.5rem"></div>
+            </form>
+            <?php endif; ?>
+        </div>
+    </section>
+
+    <section class="coll" data-coll="wgpool_manual">
+        <button type="button" class="coll-head" onclick="collToggle(this)"><span>Ручная привязка конфига</span>
+            <span class="coll-hr"><svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></span>
+        </button>
+        <div class="coll-body">
+            <p class="muted" style="margin-top:0">Жёстко закрепить конкретный конфиг за пользователем и, по желанию, за конкретным устройством. Такая привязка приоритетнее авто-выдачи и не возвращается в пул. <b>Выбор устройства не обязателен</b> — без него конфиг закрепляется за пользователем целиком.</p>
+            <form method="post" autocomplete="off">
+                <input type="hidden" name="csrf" value="<?= h($token) ?>">
+                <input type="hidden" name="action" value="pool_manual_add">
+                <input type="hidden" name="short_uuid" id="wgm_short">
+                <div class="sqcfg-grid">
+                    <div>
+                        <label>Сквад (пул)</label>
+                        <select name="pool_squad" id="wgm_squad" class="sqcfg-sel">
+                            <option value="">—</option>
+                            <?php foreach ($sqcfg_squads as $s): ?><option value="<?= h($s['uuid']) ?>"><?= h($s['name']) ?></option><?php endforeach; ?>
+                        </select>
+                    </div>
+                    <div>
+                        <label>Конфиг из пула</label>
+                        <select name="config_id" id="wgm_cfg" class="sqcfg-sel"><option value="">—</option></select>
+                    </div>
+                    <div>
+                        <label>Пользователь (shortUuid или имя)</label>
+                        <div style="display:flex;gap:.4rem"><input type="text" id="wgm_q" placeholder="shortUuid / username" style="flex:1;box-sizing:border-box"><button type="button" class="sqcfg-btn" id="wgm_find">Найти</button></div>
+                    </div>
+                    <div>
+                        <label>Устройство (необязательно)</label>
+                        <select id="wgm_hwid" name="hwid" class="sqcfg-sel"><option value="">— любое (на пользователя)</option></select>
+                    </div>
+                </div>
+                <div id="wgm_info" class="muted" style="font-size:.82rem;margin:.6rem 0"></div>
+                <button type="submit" class="btn" id="wgm_submit" disabled>Привязать</button>
+            </form>
+            <?php $man = array_values(array_filter($sqcfg_leases, fn($l) => (int) $l['manual'] === 1)); ?>
+            <h2 style="font-size:.95rem;margin:1.3rem 0 .5rem">Текущие привязки (<?= count($man) ?>)</h2>
+            <?php if (!$man): ?><p class="muted">Пока пусто.</p><?php else: ?>
+            <table class="logtbl">
+                <thead><tr><th>Сквад</th><th>Конфиг</th><th>Пользователь</th><th>Устройство</th><th></th></tr></thead>
+                <tbody>
+                <?php foreach ($man as $l): $lcid = (int) $l['config_id']; $lcn = ''; foreach ($sqcfg_list as $cc) { if ((int) $cc['id'] === $lcid) { $lcn = (string) ($cc['name'] ?? ''); break; } } ?>
+                    <tr>
+                        <td><?= h($sqcfg_names[$l['pool_id']] ?? $l['pool_id']) ?></td>
+                        <td><?= $lcn !== '' ? h($lcn) : ('#' . $lcid) ?></td>
+                        <td style="font-family:monospace;font-size:.78rem"><?= h((string) $l['short_uuid']) ?></td>
+                        <td style="font-family:monospace;font-size:.76rem"><?= $l['hwid'] !== null && $l['hwid'] !== '' ? h((string) $l['hwid']) : '<span class="muted">любое</span>' ?></td>
+                        <td style="text-align:right">
+                            <form method="post" style="margin:0" onsubmit="return uiConfirmForm(this,'Снять привязку?')">
+                                <input type="hidden" name="csrf" value="<?= h($token) ?>">
+                                <input type="hidden" name="action" value="pool_manual_del">
+                                <input type="hidden" name="id" value="<?= (int) $l['id'] ?>">
+                                <button type="submit" class="danger">🗑</button>
+                            </form>
+                        </td>
+                    </tr>
+                <?php endforeach; ?>
+                </tbody>
+            </table>
+            <?php endif; ?>
+        </div>
+    </section>
+
+    <style>
+        .wgpool-tbl td,.wgpool-tbl th{vertical-align:middle}
+        .wgpool-tbl .sqcfg-sel{padding:.3rem 2rem .3rem .6rem;font-size:.82rem}
+        .wgp-warn{color:var(--c-warn-fg);font-weight:700}
+    </style>
+    <script>
+    (function(){
+        var NAMES = <?= json_encode($sqcfg_names, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
+        var POOL = <?= json_encode($sqcfg_pool_cfgs ?? [], JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
+        var calc = document.getElementById('wgpCalc');
+        if (calc) {
+            calc.addEventListener('click', function(){
+                var msg = document.getElementById('wgpCalcMsg'); msg.textContent = 'Считаю по панели…'; calc.disabled = true;
+                fetch('?ajax=pool_sizing').then(function(r){ return r.json(); }).then(function(d){
+                    calc.disabled = false;
+                    if (!d.ok) { msg.textContent = 'Ошибка: ' + (d.error || 'нет данных'); return; }
+                    msg.textContent = '«Устройств» — фактически из базы hwid; «Потолок» — сумма лимитов устройств. Красным — пул меньше потребности.';
+                    document.querySelectorAll('.wgp-u').forEach(function(td){
+                        var row = td.parentNode, su = td.dataset.su, r = (d.rows || {})[su];
+                        var dd = row.querySelector('.wgp-d'), cc = row.querySelector('.wgp-c');
+                        var stock = parseInt((row.children[2] || {}).textContent || '0', 10);
+                        if (!r) { td.textContent = '0'; dd.textContent = '0'; cc.textContent = '0'; return; }
+                        td.textContent = (r.active || 0) + ' / ' + (r.users || 0);
+                        dd.textContent = r.devices || 0;
+                        var nn = r.limit_null || 0;
+                        cc.innerHTML = (r.limit_sum || 0) + (nn ? (' <span class="muted">+' + nn + ' по умолч.</span>') : '');
+                        if (stock < (r.devices || 0)) dd.classList.add('wgp-warn'); else dd.classList.remove('wgp-warn');
+                    });
+                }).catch(function(){ calc.disabled = false; msg.textContent = 'Ошибка запроса'; });
+            });
+        }
+        var sqSel = document.getElementById('wgm_squad'), cfgSel = document.getElementById('wgm_cfg');
+        function fillCfg(){
+            if (!cfgSel) return;
+            var sq = sqSel.value; cfgSel.innerHTML = '<option value="">—</option>';
+            (POOL[sq] || []).forEach(function(c){
+                var o = document.createElement('option'); o.value = c.id; o.textContent = (c.name || ('#' + c.id)) + ' · ' + c.type; cfgSel.appendChild(o);
+            });
+            chkReady();
+        }
+        function chkReady(){
+            var btn = document.getElementById('wgm_submit'); if (!btn) return;
+            btn.disabled = !(document.getElementById('wgm_short').value && cfgSel.value && sqSel.value);
+        }
+        if (sqSel) sqSel.addEventListener('change', fillCfg);
+        if (cfgSel) cfgSel.addEventListener('change', chkReady);
+        var findBtn = document.getElementById('wgm_find');
+        if (findBtn) {
+            findBtn.addEventListener('click', function(){
+                var q = document.getElementById('wgm_q').value.trim(); if (!q) return;
+                var info = document.getElementById('wgm_info'); info.textContent = 'Ищу…';
+                fetch('?ajax=pool_user&q=' + encodeURIComponent(q)).then(function(r){ return r.json(); }).then(function(d){
+                    var hw = document.getElementById('wgm_hwid');
+                    if (!d.ok) { info.textContent = d.error || 'Не найден'; document.getElementById('wgm_short').value = ''; chkReady(); return; }
+                    document.getElementById('wgm_short').value = d.user.shortUuid || '';
+                    var sqn = (d.user.squads || []).map(function(s){ return NAMES[s.uuid] || s.name || s.uuid; }).join(', ');
+                    info.innerHTML = 'Пользователь: <b>' + (d.user.username || '') + '</b> · лимит устройств: ' + (d.user.hwidDeviceLimit == null ? 'по умолчанию' : d.user.hwidDeviceLimit) + (sqn ? (' · сквады: ' + sqn) : '');
+                    hw.innerHTML = '<option value="">— любое (на пользователя)</option>';
+                    (d.devices || []).forEach(function(dv){
+                        var o = document.createElement('option'); o.value = dv.hwid; o.textContent = (dv.platform || dv.deviceModel || '') + ' · ' + (dv.hwid || ''); hw.appendChild(o);
+                    });
+                    chkReady();
+                }).catch(function(){ info.textContent = 'Ошибка запроса'; });
+            });
+        }
     })();
     </script>

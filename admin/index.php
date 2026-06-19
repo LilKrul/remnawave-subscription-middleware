@@ -460,6 +460,34 @@ if (isset($_GET['ajax']) && is_auth()) {
         exit();
     }
 
+    if ($a === 'pool_sizing') {
+        $perr = '';
+        $rows = wglease_sizing($perr);
+        echo json_encode(['ok' => $perr === '', 'error' => $perr, 'rows' => $rows], JSON_UNESCAPED_UNICODE);
+        exit();
+    }
+
+    if ($a === 'pool_user') {
+        $q = trim($_GET['q'] ?? '');
+        $pe = '';
+        $u = $q !== '' ? remnawave_get_user_by_short($q, $pe) : null;
+        if (!is_array($u)) { $pe2 = ''; $u = $q !== '' ? remnawave_get_user_by_username($q, $pe2) : null; }
+        if (!is_array($u)) { echo json_encode(['ok' => false, 'error' => 'Пользователь не найден']); exit(); }
+        $uuid = (string) ($u['uuid'] ?? '');
+        $devs = [];
+        if ($uuid !== '') { $de = ''; $devs = remnawave_user_hwids($uuid, $de); }
+        $sq = [];
+        foreach (($u['activeInternalSquads'] ?? []) as $s) if (is_array($s)) $sq[] = ['uuid' => (string) ($s['uuid'] ?? ''), 'name' => (string) ($s['name'] ?? '')];
+        echo json_encode(['ok' => true, 'user' => [
+            'uuid'            => $uuid,
+            'shortUuid'       => (string) ($u['shortUuid'] ?? ''),
+            'username'        => (string) ($u['username'] ?? ''),
+            'hwidDeviceLimit' => $u['hwidDeviceLimit'] ?? null,
+            'squads'          => $sq,
+        ], 'devices' => $devs], JSON_UNESCAPED_UNICODE);
+        exit();
+    }
+
     http_response_code(400);
     echo json_encode(['ok' => false, 'error' => 'unknown ajax']);
     exit();
@@ -768,6 +796,34 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && is_auth()) {
         header('Location: index.php?tab=squad_configs'); exit();
     }
 
+    if ($action === 'save_pool_modes') {
+        $modes = is_array($_POST['pool_mode'] ?? null) ? $_POST['pool_mode'] : [];
+        foreach ($modes as $sq => $m) wglease_set_mode((string) $sq, (string) $m);
+        set_setting('wgpool_reclaim_days', (string) max(1, (int) ($_POST['wgpool_reclaim_days'] ?? 14)));
+        flash('Режимы пула сохранены');
+        header('Location: index.php?tab=squad_configs'); exit();
+    }
+
+    if ($action === 'pool_manual_add') {
+        $sq  = trim($_POST['pool_squad'] ?? '');
+        $cid = (int) ($_POST['config_id'] ?? 0);
+        $su  = trim($_POST['short_uuid'] ?? '');
+        $hw  = trim($_POST['hwid'] ?? '');
+        if ($sq === '' || $cid <= 0 || $su === '') {
+            flash('Выберите сквад, конфиг и пользователя');
+        } else {
+            [$pok, $perr] = wglease_manual_add($sq, $cid, $su, $hw);
+            flash($pok ? 'Ручная привязка добавлена' : ('Не удалось: ' . $perr));
+        }
+        header('Location: index.php?tab=squad_configs'); exit();
+    }
+
+    if ($action === 'pool_manual_del') {
+        wglease_del((int) ($_POST['id'] ?? 0));
+        flash('Привязка снята');
+        header('Location: index.php?tab=squad_configs'); exit();
+    }
+
     if ($action === 'save_addsub') {
         set_setting('addsub_enabled', isset($_POST['addsub_enabled']) ? '1' : '0');
         $suf = trim((string) ($_POST['addsub_username_suffix'] ?? '_addsub'));
@@ -882,10 +938,21 @@ if ($tab === 'subst' && remnawave_url() !== '' && remnawave_token() !== '') {
 }
 
 $sqcfg_squads = []; $sqcfg_squads_err = ''; $sqcfg_list = []; $sqcfg_names = [];
+$sqcfg_modes = []; $sqcfg_stock = []; $sqcfg_pool_cfgs = []; $sqcfg_leases = []; $sqcfg_reclaim_days = 14;
 if ($tab === 'squad_configs') {
     if (remnawave_url() !== '' && remnawave_token() !== '') $sqcfg_squads = remnawave_internal_squads($sqcfg_squads_err);
     foreach ($sqcfg_squads as $s) $sqcfg_names[$s['uuid']] = $s['name'];
     $sqcfg_list = squadconf_all();
+    $sqcfg_reclaim_days = wglease_reclaim_days();
+    foreach ($sqcfg_squads as $s) $sqcfg_modes[$s['uuid']] = wglease_mode($s['uuid']);
+    foreach ($sqcfg_list as $c) {
+        if ((int) $c['enabled'] !== 1) continue;
+        foreach (squadconf_squads_of($c) as $sq) {
+            $sqcfg_stock[$sq] = ($sqcfg_stock[$sq] ?? 0) + 1;
+            $sqcfg_pool_cfgs[$sq][] = ['id' => (int) $c['id'], 'name' => (string) ($c['name'] ?? ''), 'type' => (string) ($c['type'] ?? '')];
+        }
+    }
+    $sqcfg_leases = wglease_list();
 }
 $addsub_list = [];
 if ($tab === 'addsub') $addsub_list = addsub_map_all();
