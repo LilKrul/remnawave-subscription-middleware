@@ -62,11 +62,23 @@
     </section>
 
     <div class="card">
-        <h2 style="margin-top:0;font-size:1rem">Добавленные конфиги (<?= count($sqcfg_list) ?>)</h2>
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap">
+            <h2 style="margin:0;font-size:1rem">Добавленные конфиги (<?= count($sqcfg_list) ?>)</h2>
+            <?php if ($sqcfg_list): ?>
+            <label class="pgr-size">На странице:
+                <select id="sqcfgSize" onchange="SQCFGP.setSize(parseInt(this.value,10))">
+                    <option value="25">25</option>
+                    <option value="50">50</option>
+                    <option value="100">100</option>
+                    <option value="200">200</option>
+                </select>
+            </label>
+            <?php endif; ?>
+        </div>
         <?php if (!$sqcfg_list): ?>
             <p class="muted">Пока пусто.</p>
         <?php else: $sqcfg_edit = []; ?>
-        <table class="logtbl">
+        <table class="logtbl" id="sqcfgTbl">
             <thead><tr><th>Сквады</th><th>Тип</th><th>Метка</th><th>Xray</th><th>sing-box</th><th>Mihomo</th><th>Статус</th><th></th></tr></thead>
             <tbody>
             <?php foreach ($sqcfg_list as $c):
@@ -106,6 +118,7 @@
             <?php endforeach; ?>
             </tbody>
         </table>
+        <div id="sqcfgPager" class="pgr-bot" style="margin-top:.8rem"></div>
         <?php endif; ?>
     </div>
 
@@ -266,7 +279,7 @@
                 <input type="hidden" name="csrf" value="<?= h($token) ?>">
                 <input type="hidden" name="action" value="save_pool_modes">
                 <table class="logtbl wgpool-tbl">
-                    <thead><tr><th>Сквад</th><th>Режим</th><th>В пуле</th><th>Учёток: актив. / всего</th><th>Добавлено (факт)</th><th>Макс по лимитам</th></tr></thead>
+                    <thead><tr><th>Сквад</th><th>Режим</th><th>В пуле</th><th>Учёток: актив. / всего</th><th>Добавлено (факт)</th></tr></thead>
                     <tbody>
                     <?php foreach ($sqcfg_squads as $s): $pu = $s['uuid']; $pm = $sqcfg_modes[$pu] ?? 'shared'; ?>
                         <tr>
@@ -281,7 +294,6 @@
                             <td><?= (int) ($sqcfg_stock[$pu] ?? 0) ?></td>
                             <td class="wgp-u" data-su="<?= h($pu) ?>">—</td>
                             <td class="wgp-d" data-su="<?= h($pu) ?>">—</td>
-                            <td class="wgp-c" data-su="<?= h($pu) ?>">—</td>
                         </tr>
                     <?php endforeach; ?>
                     </tbody>
@@ -294,7 +306,7 @@
                 </div>
                 <div id="wgpCalcMsg" class="muted" style="font-size:.8rem;margin-top:.5rem"></div>
                 <div class="muted" style="font-size:.78rem;line-height:1.6;margin-top:.7rem">
-                    <b>В пуле</b> — конфигов (слотов) в пуле сквада. <b>Учёток</b> — пользователей сквада: активных / всего. <b>Добавлено (факт)</b> — реально зарегистрировано устройств юзерами сквада, из базы hwid. <b>Макс по лимитам</b> — потолок: сумма лимитов устройств учёток (Σ hwidDeviceLimit), независимо от того, заняты слоты или нет; для учёток с отключённым лимитом — «Нет лимита».
+                    <b>В пуле</b> — конфигов (слотов) в пуле сквада. <b>Учёток</b> — пользователей сквада: активных / всего. <b>Добавлено (факт)</b> — реально зарегистрировано устройств юзерами сквада, из базы hwid. Красным, если конфигов в пуле меньше факта.
                 </div>
             </form>
             <?php endif; ?>
@@ -378,20 +390,15 @@
         function wgpApply(rows){
             document.querySelectorAll('.wgp-u').forEach(function(td){
                 var row = td.parentNode, su = td.dataset.su, r = (rows || {})[su];
-                var dd = row.querySelector('.wgp-d'), cc = row.querySelector('.wgp-c');
+                var dd = row.querySelector('.wgp-d');
                 var stock = parseInt((row.children[2] || {}).textContent || '0', 10);
-                if (!r) { td.textContent = '0'; dd.textContent = '0'; cc.textContent = '0'; dd.classList.remove('wgp-warn'); return; }
+                if (!r) { td.textContent = '0'; dd.textContent = '0'; dd.classList.remove('wgp-warn'); return; }
                 td.textContent = (r.active || 0) + ' / ' + (r.users || 0);
                 dd.textContent = r.devices || 0;
-                var ls = r.limit_sum || 0, nl = r.nolimit || 0;
-                if (ls > 0 && nl > 0) cc.innerHTML = ls + ' <span class="muted">+' + nl + ' без лимита</span>';
-                else if (ls > 0) cc.textContent = ls;
-                else if (nl > 0) cc.innerHTML = '<span class="muted">Нет лимита</span>';
-                else cc.textContent = '0';
                 if (stock < (r.devices || 0)) dd.classList.add('wgp-warn'); else dd.classList.remove('wgp-warn');
             });
         }
-        var WGP_HINT = 'Добавлено — реальные hwid из базы; Макс по лимитам — сумма лимитов учёток. Красным — пул меньше факта.';
+        var WGP_HINT = 'Добавлено — реально зарегистрированные устройства из базы hwid. Красным — пул меньше факта.';
         var calc = document.getElementById('wgpCalc'), wgpMsg = document.getElementById('wgpCalcMsg');
         if (SIZING && Object.keys(SIZING).length) { wgpApply(SIZING); if (wgpMsg) wgpMsg.innerHTML = 'Последний расчёт: ' + wgpFmtAgo(SIZING_TS) + '. ' + WGP_HINT; }
         if (calc) {
@@ -442,5 +449,32 @@
                 }).catch(function(){ info.textContent = 'Ошибка запроса'; });
             });
         }
+    })();
+    </script>
+    <script>
+    (function(){
+        var SIZES = [25, 50, 100, 200], size = 50, page = 1;
+        try { var s = parseInt(localStorage.getItem('sqcfg_size'), 10); if (SIZES.indexOf(s) > -1) size = s; } catch (e) {}
+        function rows(){ var t = document.getElementById('sqcfgTbl'); if (!t || !t.tBodies.length) return []; return Array.prototype.slice.call(t.tBodies[0].rows); }
+        function render(){
+            var all = rows(), total = all.length, per = size, pages = Math.max(1, Math.ceil(total / per));
+            if (page > pages) page = pages; if (page < 1) page = 1;
+            var start = (page - 1) * per, end = start + per;
+            all.forEach(function(tr, i){ tr.style.display = (i >= start && i < end) ? '' : 'none'; });
+            var bot = document.getElementById('sqcfgPager');
+            if (bot) {
+                if (total > per) {
+                    bot.innerHTML = '<div class="pgr-nav">'
+                        + '<button type="button" class="pgr-b" data-go="prev"' + (page <= 1 ? ' disabled' : '') + '>◀</button>'
+                        + '<span class="pgr-st">' + (total ? start + 1 : 0) + '–' + Math.min(end, total) + ' из ' + total + ' · стр. ' + page + '/' + pages + '</span>'
+                        + '<button type="button" class="pgr-b" data-go="next"' + (page >= pages ? ' disabled' : '') + '>▶</button>'
+                        + '</div>';
+                    bot.querySelectorAll('.pgr-b').forEach(function(b){ b.addEventListener('click', function(){ if (b.dataset.go === 'prev' && page > 1) page--; if (b.dataset.go === 'next' && page < pages) page++; render(); }); });
+                } else bot.innerHTML = '';
+            }
+        }
+        window.SQCFGP = { setSize: function(v){ if (SIZES.indexOf(v) < 0) v = 50; size = v; page = 1; try { localStorage.setItem('sqcfg_size', String(v)); } catch (e) {} render(); } };
+        var sel = document.getElementById('sqcfgSize'); if (sel) sel.value = String(size);
+        render();
     })();
     </script>
