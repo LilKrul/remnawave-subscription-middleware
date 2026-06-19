@@ -62,7 +62,21 @@
     </section>
 
     <div class="card">
-        <h2 style="margin-top:0;font-size:1rem">Добавленные конфиги (<?= count($sqcfg_list) ?>)</h2>
+        <div class="loghead">
+            <h2>Добавленные конфиги (<?= count($sqcfg_list) ?>)</h2>
+            <?php if ($sqcfg_list): ?>
+            <div class="loghead-r">
+                <label class="pgr-size">На странице:
+                    <select id="sqcfgSize" onchange="SQCFGP.setSize(parseInt(this.value,10))">
+                        <option value="25">25</option>
+                        <option value="50">50</option>
+                        <option value="100">100</option>
+                        <option value="200">200</option>
+                    </select>
+                </label>
+            </div>
+            <?php endif; ?>
+        </div>
         <?php if (!$sqcfg_list): ?>
             <p class="muted">Пока пусто.</p>
         <?php else: $sqcfg_edit = []; ?>
@@ -106,17 +120,7 @@
             <?php endforeach; ?>
             </tbody>
         </table>
-        <div class="sqcfg-pgr">
-            <label class="pgr-size">На странице:
-                <select id="sqcfgSize" onchange="SQCFGP.setSize(parseInt(this.value,10))">
-                    <option value="25">25</option>
-                    <option value="50">50</option>
-                    <option value="100">100</option>
-                    <option value="200">200</option>
-                </select>
-            </label>
-            <div id="sqcfgPager"></div>
-        </div>
+        <div id="sqcfgPager" style="margin-top:.85rem;display:flex;justify-content:flex-end"></div>
         <?php endif; ?>
     </div>
 
@@ -377,8 +381,6 @@
         .wgpool-tbl td,.wgpool-tbl th{vertical-align:middle}
         .wgpool-tbl .sqcfg-sel{padding:.3rem 2rem .3rem .6rem;font-size:.82rem}
         .wgp-warn{color:var(--c-warn-fg);font-weight:700}
-        .sqcfg-pgr{display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap;margin-top:.85rem}
-        .sqcfg-pgr #sqcfgPager:empty{display:none}
     </style>
     <script>
     (function(){
