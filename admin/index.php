@@ -217,6 +217,7 @@ function csrf_ok() { return isset($_POST['csrf'], $_SESSION['csrf']) && hash_equ
 function is_auth() { return !empty($_SESSION['auth']); }
 function flash($m) { $_SESSION['flash'] = $m; }
 function take_flash() { $m = $_SESSION['flash'] ?? null; unset($_SESSION['flash']); return $m; }
+function form_saved($tab) { if (!empty($_POST['xhr'])) { header('Content-Type: application/json; charset=utf-8'); echo json_encode(['ok' => true, 'msg' => take_flash()], JSON_UNESCAPED_UNICODE); exit(); } header('Location: index.php?tab=' . $tab); exit(); }
 
 if (isset($_GET['logout'])) {
     $_SESSION = []; session_destroy();
@@ -504,7 +505,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && is_auth()) {
         $split = fn($v) => array_values(array_filter(array_map('trim', explode("\n", str_replace("\r", '', (string) $v))), fn($s) => $s !== ''));
         set_setting('blocked_remarks', json_encode($split($_POST['blocked_remarks'] ?? ''), JSON_UNESCAPED_UNICODE));
         flash('Настройки HWID-блокировки сохранены');
-        header('Location: index.php?tab=hwid'); exit();
+        form_saved('hwid');
     }
 
     if ($action === 'save_grace') {
@@ -521,7 +522,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && is_auth()) {
         set_setting('grace_external_squad_uuid', trim($_POST['grace_external_squad_uuid'] ?? ''));
         set_setting('grace_announce', grace_announce_normalize($_POST['grace_announce'] ?? ''));
         flash('Настройки грейс-сквада сохранены');
-        header('Location: index.php?tab=subst'); exit();
+        form_saved('subst');
     }
 
     if ($action === 'save_connection') {
@@ -544,7 +545,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && is_auth()) {
         }
         set_setting('ua_hwid_keys', json_encode($ua_keys ?: ['x-hwid'], JSON_UNESCAPED_SLASHES));
         flash('Настройки подключения сохранены');
-        header('Location: index.php?tab=connection'); exit();
+        form_saved('connection');
     }
 
     if ($action === 'save_branding') {
@@ -553,7 +554,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && is_auth()) {
         $be = '';
         brand_refresh($be);
         flash($be !== '' ? ('Брендинг сохранён. API панели: ' . $be) : 'Брендинг сохранён и обновлён');
-        header('Location: index.php?tab=branding'); exit();
+        form_saved('branding');
     }
 
     if ($action === 'save_forward') {
@@ -577,7 +578,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && is_auth()) {
         set_setting('forward_targets', json_encode($clean, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
         ensure_forward_log();
         flash('Настройки раздвоения сохранены');
-        header('Location: index.php?tab=webhooks'); exit();
+        form_saved('webhooks');
     }
 
     if ($action === 'clear_fwdlog') {
@@ -644,7 +645,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && is_auth()) {
         }
         set_setting('app_headers', json_encode($clean, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
         flash('Заголовки приложений сохранены');
-        header('Location: index.php?tab=headers'); exit();
+        form_saved('headers');
     }
 
     if ($action === 'add_override') {
@@ -678,7 +679,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && is_auth()) {
         set_setting('metrics_peak_factor', (string) ($f >= 1.5 ? $f : 3));
         set_setting('metrics_peak_floor', (string) max(5, (int) ($_POST['metrics_peak_floor'] ?? 30)));
         flash('Пороги детектора пиков сохранены');
-        header('Location: index.php?tab=sysinfo'); exit();
+        form_saved('sysinfo');
     }
 
     if ($action === 'migrate_db') {
@@ -730,14 +731,14 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && is_auth()) {
             $msg .= $wok ? ' · вебхук бота установлен' : (' · вебхук НЕ установлен: ' . $werr);
         }
         flash($msg);
-        header('Location: index.php?tab=chat'); exit();
+        form_saved('chat');
     }
 
     if ($action === 'save_landing') {
         $lp = (int) ($_POST['landing_preset'] ?? 1);
         set_setting('landing_preset', (string) (($lp >= 1 && $lp <= 4) ? $lp : 1));
         flash('Дизайн страницы-заглушки сохранён');
-        header('Location: index.php?tab=branding'); exit();
+        form_saved('branding');
     }
 
     if ($action === 'landing_regen_fp') {
@@ -854,7 +855,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && is_auth()) {
         }
         set_setting('wgpool_reclaim_days', (string) max(1, (int) ($_POST['wgpool_reclaim_days'] ?? 14)));
         flash('Режимы пула сохранены');
-        header('Location: index.php?tab=wg_pool'); exit();
+        form_saved('wg_pool');
     }
 
     if ($action === 'pool_manual_add') {
@@ -887,7 +888,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && is_auth()) {
         set_setting('addsub_stub_label', $sl);
         set_setting('addsub_merge_xray', isset($_POST['addsub_merge_xray']) ? '1' : '0');
         flash('Настройки слияния подписок сохранены');
-        header('Location: index.php?tab=addsub'); exit();
+        form_saved('addsub');
     }
 }
 
@@ -1341,6 +1342,36 @@ if(window.matchMedia){matchMedia('(prefers-color-scheme: dark)').addEventListene
     };
     toastEl && toastEl.addEventListener('click',function(){toastEl.classList.remove('show');});
     var fm=document.getElementById('flashMsg'); if(fm && fm.getAttribute('data-msg')) uiToast(fm.getAttribute('data-msg'));
+    document.querySelectorAll('form[data-autosave]').forEach(function(form){
+        var saving=false, queued=false, snap=new WeakMap();
+        function val(el){return el.type==='checkbox'?(el.checked?'1':'0'):el.value;}
+        function setVal(el,v){if(el.type==='checkbox')el.checked=(v==='1');else el.value=v;}
+        function snapAll(){form.querySelectorAll('input,select,textarea').forEach(function(el){snap.set(el,val(el));});}
+        snapAll();
+        function send(changed){
+            if(saving){queued=true;return;}
+            saving=true;
+            var fd=new FormData(form); fd.append('xhr','1');
+            fetch('index.php',{method:'POST',credentials:'same-origin',body:fd})
+                .then(function(r){return r.json();})
+                .then(function(d){
+                    saving=false;
+                    if(!d||!d.ok){if(window.uiToast)uiToast('Не сохранено');if(changed&&snap.has(changed))setVal(changed,snap.get(changed));if(queued){queued=false;send(null);}return;}
+                    if(window.uiToast)uiToast(d.msg||'Сохранено');
+                    snapAll();
+                    if(queued){queued=false;send(null);}
+                })
+                .catch(function(){
+                    saving=false;
+                    if(window.uiToast)uiToast('Ошибка сети — не сохранено');
+                    if(changed&&snap.has(changed))setVal(changed,snap.get(changed));
+                    if(queued){queued=false;send(null);}
+                });
+        }
+        form.addEventListener('change',function(e){var t=e.target;if(t.matches('input[type=checkbox],input[type=radio],select'))send(t);});
+        form.addEventListener('focusout',function(e){var t=e.target;if(!t.matches('input,textarea'))return;if(t.type==='password'||t.type==='checkbox'||t.type==='radio'||t.type==='submit'||t.type==='button')return;if(val(t)===snap.get(t))return;send(t);});
+        form.addEventListener('submit',function(e){e.preventDefault();send(null);});
+    });
     window.collToggle=function(b){var s=b.closest('.coll');if(!s)return;s.classList.toggle('collapsed');if(!/^next_/.test(s.dataset.coll||'')){try{localStorage.setItem('coll_'+s.dataset.coll,s.classList.contains('collapsed')?'1':'0');}catch(e){}}};
     document.querySelectorAll('.coll').forEach(function(s){if(/^next_/.test(s.dataset.coll||''))return;try{var v=localStorage.getItem('coll_'+s.dataset.coll);if(v==='1')s.classList.add('collapsed');else if(v==='0')s.classList.remove('collapsed');}catch(e){}});
     window.navAcc=function(b){var s=b.closest('.navacc');if(!s)return;s.classList.toggle('closed');try{localStorage.setItem('nav_'+s.dataset.acc,s.classList.contains('closed')?'1':'0');}catch(e){}};

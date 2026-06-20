@@ -2,7 +2,7 @@
         <h2 style="margin-top:0;font-size:1rem">Подключение</h2>
         <p class="muted" style="margin-bottom:.4rem">Нажмите <b>?</b> у любого поля — справа откроется справка с примером. Формат: <b>домены — без</b> <code>https://</code>, а <b>URL панели — со схемой</b> <code>https://</code>.</p>
         <?php if (submw_in_docker()): ?><div class="info" style="margin-bottom:.6rem">Docker-режим: источник «Панель» и адреса панели/subpage заданы окружением контейнера (compose) и здесь только для чтения. Достаточно задать <b>API-токен панели</b>.</div><?php endif; ?>
-        <form method="post">
+        <form method="post" data-autosave>
             <input type="hidden" name="csrf" value="<?= h($token) ?>">
             <input type="hidden" name="action" value="save_connection">
             <div class="row">

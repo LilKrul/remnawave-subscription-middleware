@@ -32,7 +32,7 @@ WEBHOOK_SECRET_HEADER=<?= h(webhook_secret() ?: '<секрет из «Подкл
     <div class="card">
         <h2 style="margin-top:0;font-size:1rem">Раздвоение вебхука («тройник») <button type="button" class="qh" onclick="help('forward')" aria-label="Справка">?</button></h2>
         <p class="muted">Нужен, если адресатам нужны <b>разные секреты</b> или пересылка после обработки прослойкой. Если всем хватает одного секрета — проще перечислить URL-ы через запятую прямо в <code>WEBHOOK_URL</code> панели. Подробнее — по «?». URL прослойки: <code><?= h($wh_url) ?></code>.</p>
-        <form method="post" id="fwdForm">
+        <form method="post" id="fwdForm" data-autosave>
             <input type="hidden" name="csrf" value="<?= h($token) ?>">
             <input type="hidden" name="action" value="save_forward">
             <input type="hidden" name="forward_targets_json" id="fwd_json" value="">

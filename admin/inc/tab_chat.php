@@ -64,7 +64,7 @@ $c_color  = chat_widget_color();
         </button>
         <div class="coll-body">
         <p class="muted" style="margin-bottom:.6rem">Встроенный в страницу-заглушку чат. Сообщения посетителей переотправляются в Telegram и/или на вебхук; отвечать можно отсюда, из Telegram (ответом на пересланное сообщение) или через вебхук.</p>
-        <form method="post">
+        <form method="post" data-autosave>
             <input type="hidden" name="csrf" value="<?= h($token) ?>">
             <input type="hidden" name="action" value="save_chat_cfg">
 

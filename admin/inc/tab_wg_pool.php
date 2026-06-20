@@ -76,7 +76,7 @@
             <?php if (!$sqcfg_squads): ?>
                 <div class="warn">Сквады не получены — настройте подключение к панели.</div>
             <?php else: ?>
-            <form method="post">
+            <form method="post" data-autosave>
                 <input type="hidden" name="csrf" value="<?= h($token) ?>">
                 <input type="hidden" name="action" value="save_pool_modes">
                 <table class="logtbl wgpool-tbl">

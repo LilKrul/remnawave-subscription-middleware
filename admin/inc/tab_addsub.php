@@ -10,7 +10,7 @@
     </section>
 
     <div class="card">
-        <form method="post">
+        <form method="post" data-autosave>
             <input type="hidden" name="csrf" value="<?= h($token) ?>">
             <input type="hidden" name="action" value="save_addsub">
             <div class="set-row">

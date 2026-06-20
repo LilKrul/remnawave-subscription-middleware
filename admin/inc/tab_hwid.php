@@ -1,7 +1,7 @@
     <div class="card">
         <h2 style="margin-top:0;font-size:1rem">HWID / ручная блокировка</h2>
         <p class="muted">Что увидит юзер, заблокированный по HWID (вкладка «Пользователи» → Устройства → Блок) или вручную (вкладка <a href="?tab=overrides" style="color:var(--accent-text)">Оверрайды</a>, причина <b>blocked</b>). Снимается только там же. Жёсткая блокировка не зависит от грейс-периода.</p>
-        <form method="post">
+        <form method="post" data-autosave>
             <input type="hidden" name="csrf" value="<?= h($token) ?>">
             <input type="hidden" name="action" value="save_hwid">
             <div class="subwrap">

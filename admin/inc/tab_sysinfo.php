@@ -92,7 +92,7 @@ $si_floor  = metrics_peak_floor();
             </div>
         </div>
         <p class="muted">Минута помечается пиком, если запросов в неё ≥ <b><?= h(number_format($si_factor, 1)) ?>×</b> от средней за предыдущий час И не меньше порога <b><?= (int) $si_floor ?></b> запр/мин.</p>
-        <form method="post" style="display:flex;gap:1rem;flex-wrap:wrap;align-items:flex-end;margin-bottom:1rem">
+        <form method="post" data-autosave style="display:flex;gap:1rem;flex-wrap:wrap;align-items:flex-end;margin-bottom:1rem">
             <input type="hidden" name="csrf" value="<?= h($token) ?>">
             <input type="hidden" name="action" value="save_metrics_cfg">
             <div><label style="display:block;font-size:.8rem;font-weight:600;margin-bottom:.3rem">Множитель (×средней)</label><input type="number" step="0.1" min="1.5" name="metrics_peak_factor" value="<?= h(number_format($si_factor, 1)) ?>" style="width:120px;padding:.5rem;border:1px solid var(--line);border-radius:8px;background:var(--bg2);color:var(--text)"></div>
