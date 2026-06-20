@@ -1,4 +1,15 @@
-<?php $wg_psize = pager_cookie_size('wgpool_size'); ?>
+<?php
+$wg_psize = pager_cookie_size('wgpool_size');
+$wg_uc = wglease_user_cache();
+$wgp_hint = 'Добавлено — реально зарегистрированные устройства из базы hwid. Красным — пул меньше факта.';
+$wgp_ts = (int) ($sqcfg_sizing['ts'] ?? 0);
+$wgp_msg0 = '';
+if (($sqcfg_sizing['rows'] ?? []) && $wgp_ts > 0) {
+    $d = max(0, time() - $wgp_ts);
+    $ago = $d < 60 ? 'только что' : ($d < 3600 ? intdiv($d, 60) . ' мин назад' : ($d < 86400 ? intdiv($d, 3600) . ' ч назад' : intdiv($d, 86400) . ' дн назад'));
+    $wgp_msg0 = 'Последний расчёт: ' . $ago . '. ' . $wgp_hint;
+}
+?>
     <section class="<?= coll_cls('wgpool_help') ?>" data-coll="wgpool_help">
         <button type="button" class="coll-head" onclick="collToggle(this)"><span>Как работает пул и почему так</span>
             <span class="coll-hr"><svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></span>
@@ -95,8 +106,9 @@
                                 </select>
                             </td>
                             <td><b><?= (int) ($sqcfg_free[$pu] ?? 0) ?></b> / <?= (int) ($sqcfg_stock[$pu] ?? 0) ?></td>
-                            <td class="wgp-u" data-su="<?= h($pu) ?>">—</td>
-                            <td class="wgp-d" data-su="<?= h($pu) ?>">—</td>
+                            <?php $sz = $sqcfg_sizing['rows'][$pu] ?? null; $szHas = !empty($sqcfg_sizing['rows']); $uTxt = $sz ? ((int) ($sz['active'] ?? 0) . ' / ' . (int) ($sz['users'] ?? 0)) : ($szHas ? '0' : '—'); $dVal = $sz ? (int) ($sz['devices'] ?? 0) : ($szHas ? 0 : null); $dWarn = ($dVal !== null && (int) ($sqcfg_free[$pu] ?? 0) < $dVal) ? ' wgp-warn' : ''; ?>
+                            <td class="wgp-u" data-su="<?= h($pu) ?>"><?= h($uTxt) ?></td>
+                            <td class="wgp-d<?= $dWarn ?>" data-su="<?= h($pu) ?>"><?= $dVal === null ? '—' : (int) $dVal ?></td>
                         </tr>
                     <?php endforeach; ?>
                     </tbody>
@@ -107,7 +119,7 @@
                     <label class="muted" style="display:flex;align-items:center;gap:.4rem;margin:0;font-weight:400">авто-возврат слота через
                         <input type="number" name="wgpool_reclaim_days" value="<?= (int) $sqcfg_reclaim_days ?>" min="1" max="365" style="width:5rem;box-sizing:border-box"> дн. неактивности</label>
                 </div>
-                <div id="wgpCalcMsg" class="muted" style="font-size:.8rem;margin-top:.5rem"></div>
+                <div id="wgpCalcMsg" class="muted" style="font-size:.8rem;margin-top:.5rem"><?= h($wgp_msg0) ?></div>
                 <div class="muted" style="font-size:.78rem;line-height:1.6;margin-top:.7rem">
                     <b>В пуле</b> — свободных / всего WG/AWG-конфигов (слотов); выданные устройствам вычитаются из «свободных». <b>Учёток</b> — пользователей сквада: активных / всего. <b>Добавлено (факт)</b> — реально зарегистрировано устройств юзерами сквада, из базы hwid. Красным, если конфигов меньше факта.
                 </div>
@@ -271,7 +283,8 @@
                 </td>
                 <td>
                 <?php if ($lz): $lsu = trim((string) ($lz['short_uuid'] ?? '')); $lhw = (string) ($lz['hwid'] ?? ''); $lplat = $lhw !== '' ? (string) ($sqcfg_hwid_plat[$lhw] ?? '') : ''; ?>
-                    <span class="wg-issued" data-su="<?= h($lsu) ?>" data-hwid="<?= h($lhw) ?>" data-plat="<?= h($lplat) ?>" data-manual="<?= (int) ($lz['manual'] ?? 0) ?>"><?= h($lsu !== '' ? $lsu : '—') ?></span>
+                    <?php $lname = ($lsu !== '' && !empty($wg_uc[$lsu]['u'])) ? (string) $wg_uc[$lsu]['u'] : ($lsu !== '' ? $lsu : '—'); ?>
+                    <span class="wg-issued" data-su="<?= h($lsu) ?>" data-hwid="<?= h($lhw) ?>" data-plat="<?= h($lplat) ?>" data-manual="<?= (int) ($lz['manual'] ?? 0) ?>"><span class="wg-issued-name"><?= h($lname) ?></span></span>
                 <?php else: ?>
                     <span class="muted">свободен</span>
                 <?php endif; ?>
@@ -386,7 +399,7 @@
     <?php include __DIR__ . '/_sqcfg_js.php'; ?>
     <script>
     window.SQCFG = <?= json_encode($sqcfg_edit ?? [], JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
-    window.WG_UCACHE = <?= json_encode(wglease_user_cache(), JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
+    window.WG_UCACHE = <?= json_encode($wg_uc, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
     sqcfgInitEdit();
     sqcfgInitPager('wgTbl', 'wgPager', 'wgSize', 'wgpool_size');
     sqcfgInitFileBtn('wgFiles', 'wgFilesInfo');
@@ -514,7 +527,6 @@
         }
         var WGP_HINT = 'Добавлено — реально зарегистрированные устройства из базы hwid. Красным — пул меньше факта.';
         var calc = document.getElementById('wgpCalc'), wgpMsg = document.getElementById('wgpCalcMsg');
-        if (SIZING && Object.keys(SIZING).length) { wgpApply(SIZING); if (wgpMsg) wgpMsg.innerHTML = 'Последний расчёт: ' + wgpFmtAgo(SIZING_TS) + '. ' + WGP_HINT; }
         if (calc) {
             calc.addEventListener('click', function(){
                 if (wgpMsg) wgpMsg.textContent = 'Считаю по панели…'; calc.disabled = true;
