@@ -97,22 +97,25 @@ function wglease_select($short_uuid, $hwid, array $u_squads) {
     foreach ($u_squads as $sq) {
         $mode = wglease_mode($sq);
         if ($mode === 'shared') continue;
-        $cands = [];
+        $by_type = [];
         foreach ($by_squad[$sq] ?? [] as $c) {
             $id = (int) $c['id'];
             if (isset($added[$id])) continue;
-            if ((string) ($c['type'] ?? '') === 'vless') { $added[$id] = true; $out[] = $c; }
-            else $cands[] = $c;
+            $t = (string) ($c['type'] ?? '');
+            if ($t === 'vless') { $added[$id] = true; $out[] = $c; continue; }
+            $by_type[$t][] = $c;
         }
-        if (!$cands) continue;
+        if (!$by_type) continue;
         if ($mode === 'devices') {
             if ($hwid === '') continue;
-            $subkey = 'd:' . $short_uuid . '|' . $hwid;
+            $base = 'd:' . $short_uuid . '|' . $hwid;
         } else {
-            $subkey = 's:' . $short_uuid;
+            $base = 's:' . $short_uuid;
         }
-        $pick = wglease_pick($sq, $subkey, $short_uuid, ($mode === 'devices' ? $hwid : ''), $cands);
-        if ($pick) { $added[(int) $pick['id']] = true; $out[] = $pick; }
+        foreach ($by_type as $t => $cands) {
+            $pick = wglease_pick($sq, $base . '|t:' . $t, $short_uuid, ($mode === 'devices' ? $hwid : ''), $cands);
+            if ($pick) { $added[(int) $pick['id']] = true; $out[] = $pick; }
+        }
     }
     foreach (wglease_manual_for_user($short_uuid, $hwid) as $c) {
         $id = (int) $c['id'];
