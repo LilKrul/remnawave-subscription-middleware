@@ -568,8 +568,8 @@ function xray_outbound_any($pn, $tag) {
 }
 
 function squadconf_inject_xray_json($body, array $configs) {
-    $obj = json_decode((string) $body, true);
-    if (!is_array($obj)) return $body;
+    $obj = json_decode((string) $body);
+    if (!is_array($obj) && !is_object($obj)) return $body;
 
     $items = []; $names = [];
     foreach ($configs as $c) {
@@ -582,35 +582,33 @@ function squadconf_inject_xray_json($body, array $configs) {
     }
     if (!$items) return $body;
 
-    $isList = ($obj !== [] && array_keys($obj) === range(0, count($obj) - 1));
-    if ($isList) {
+    if (is_array($obj)) {
         foreach ($obj as $el) {
-            if (!is_array($el) || !isset($el['outbounds']) || !is_array($el['outbounds'])) return $body;
+            if (!is_object($el) || !isset($el->outbounds) || !is_array($el->outbounds)) return $body;
         }
-        $tplIdx = -1;
-        foreach ($obj as $k => $el) { if (is_array($el) && isset($el['outbounds']) && is_array($el['outbounds'])) { $tplIdx = $k; break; } }
-        if ($tplIdx < 0) return $body;
+        $tpl = null;
+        foreach ($obj as $el) { if (is_object($el) && isset($el->outbounds) && is_array($el->outbounds)) { $tpl = $el; break; } }
+        if ($tpl === null) return $body;
         foreach ($items as $it) {
-            $el = $obj[$tplIdx];
+            $el = json_decode(json_encode($tpl));
             $pi = -1; $ptag = 'proxy';
-            foreach ($el['outbounds'] as $oi => $ob) {
-                if ((string) ($ob['tag'] ?? '') === 'proxy') { $pi = $oi; $ptag = 'proxy'; break; }
+            foreach ($el->outbounds as $oi => $ob) {
+                if (is_object($ob) && (string) ($ob->tag ?? '') === 'proxy') { $pi = $oi; $ptag = 'proxy'; break; }
             }
             if ($pi < 0) {
-                foreach ($el['outbounds'] as $oi => $ob) {
-                    if (!in_array((string) ($ob['protocol'] ?? ''), ['freedom', 'blackhole', 'dns'], true)) { $pi = $oi; $ptag = (string) ($ob['tag'] ?? 'proxy'); break; }
+                foreach ($el->outbounds as $oi => $ob) {
+                    if (is_object($ob) && !in_array((string) ($ob->protocol ?? ''), ['freedom', 'blackhole', 'dns'], true)) { $pi = $oi; $ptag = (string) ($ob->tag ?? 'proxy'); break; }
                 }
             }
             $wg = xray_outbound_any($it['pn'], $ptag !== '' ? $ptag : 'proxy');
             if (!$wg) continue;
-            if ($pi >= 0) $el['outbounds'][$pi] = $wg;
-            else array_unshift($el['outbounds'], $wg);
-            $el['remarks'] = $it['name'];
+            if ($pi >= 0) $el->outbounds[$pi] = $wg; else array_unshift($el->outbounds, $wg);
+            $el->remarks = $it['name'];
             $obj[] = $el;
         }
     } else {
-        if (!isset($obj['outbounds']) || !is_array($obj['outbounds'])) return $body;
-        foreach ($items as $it) { $wg = xray_outbound_any($it['pn'], ''); if ($wg) $obj['outbounds'][] = $wg; }
+        if (!isset($obj->outbounds) || !is_array($obj->outbounds)) return $body;
+        foreach ($items as $it) { $wg = xray_outbound_any($it['pn'], ''); if ($wg) $obj->outbounds[] = $wg; }
     }
     $enc = json_encode($obj, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     return $enc === false ? $body : $enc;
