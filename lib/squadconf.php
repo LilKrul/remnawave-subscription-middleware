@@ -485,12 +485,13 @@ function squadconf_is_singbox($obj) {
 }
 
 function squadconf_inject_singbox($body, array $configs) {
-    $obj = json_decode((string) $body, true);
-    if (!squadconf_is_singbox($obj)) return $body;
+    if (!squadconf_is_singbox(json_decode((string) $body, true))) return $body;
+    $obj = json_decode((string) $body);
+    if (!is_object($obj) || !isset($obj->outbounds) || !is_array($obj->outbounds)) return $body;
     $existing = [];
-    foreach ($obj['outbounds'] as $o) if (is_array($o) && isset($o['tag'])) $existing[] = (string) $o['tag'];
-    if (isset($obj['endpoints']) && is_array($obj['endpoints'])) {
-        foreach ($obj['endpoints'] as $e) if (is_array($e) && isset($e['tag'])) $existing[] = (string) $e['tag'];
+    foreach ($obj->outbounds as $o) if (is_object($o) && isset($o->tag)) $existing[] = (string) $o->tag;
+    if (isset($obj->endpoints) && is_array($obj->endpoints)) {
+        foreach ($obj->endpoints as $e) if (is_object($e) && isset($e->tag)) $existing[] = (string) $e->tag;
     }
     $added = []; $names = [];
     foreach ($configs as $c) {
@@ -504,22 +505,21 @@ function squadconf_inject_singbox($body, array $configs) {
         if ($t === 'vless') {
             $ob = vless_to_singbox($pn, $nm);
             if (!$ob) continue;
-            $obj['outbounds'][] = $ob;
+            $obj->outbounds[] = $ob;
         } else {
             $ep = squadconf_singbox_endpoint($pn, $nm);
             if (!$ep) continue;
-            if (!isset($obj['endpoints']) || !is_array($obj['endpoints'])) $obj['endpoints'] = [];
-            $obj['endpoints'][] = $ep;
+            if (!isset($obj->endpoints) || !is_array($obj->endpoints)) $obj->endpoints = [];
+            $obj->endpoints[] = $ep;
         }
         $added[] = $nm; $names[] = $nm;
     }
     if (!$added) return $body;
-    foreach ($obj['outbounds'] as &$o) {
-        if (is_array($o) && in_array(($o['type'] ?? ''), ['selector', 'urltest'], true) && isset($o['outbounds']) && is_array($o['outbounds'])) {
-            foreach ($added as $nm) if (!in_array($nm, $o['outbounds'], true)) $o['outbounds'][] = $nm;
+    foreach ($obj->outbounds as $o) {
+        if (is_object($o) && in_array(($o->type ?? ''), ['selector', 'urltest'], true) && isset($o->outbounds) && is_array($o->outbounds)) {
+            foreach ($added as $nm) if (!in_array($nm, $o->outbounds, true)) $o->outbounds[] = $nm;
         }
     }
-    unset($o);
     $enc = json_encode($obj, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     return $enc === false ? $body : $enc;
 }

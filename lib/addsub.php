@@ -376,60 +376,60 @@ function addsub_merge_clash($a, $b) {
 }
 
 function addsub_singbox_is_node($o) {
-    if (!is_array($o)) return false;
-    $t = (string) ($o['type'] ?? '');
-    if ($t === '' || !isset($o['tag'])) return false;
+    if (!is_object($o)) return false;
+    $t = (string) ($o->type ?? '');
+    if ($t === '' || !isset($o->tag)) return false;
     return !in_array($t, ['selector', 'urltest', 'direct', 'block', 'dns'], true);
 }
 
 function addsub_merge_singbox($a, $b) {
-    $oa = json_decode($a, true);
-    $ob = json_decode($b, true);
-    if (!squadconf_is_singbox($oa) || !is_array($ob) || !isset($ob['outbounds']) || !is_array($ob['outbounds'])) return $a;
+    if (!squadconf_is_singbox(json_decode((string) $a, true))) return $a;
+    $oa = json_decode((string) $a);
+    $ob = json_decode((string) $b);
+    if (!is_object($oa) || !isset($oa->outbounds) || !is_array($oa->outbounds)) return $a;
+    if (!is_object($ob) || !isset($ob->outbounds) || !is_array($ob->outbounds)) return $a;
     $label = addsub_label();
     $existing = [];
-    foreach ($oa['outbounds'] as $o) if (is_array($o) && isset($o['tag'])) $existing[(string) $o['tag']] = true;
+    foreach ($oa->outbounds as $o) if (is_object($o) && isset($o->tag)) $existing[(string) $o->tag] = true;
     $added = [];
-    foreach ($ob['outbounds'] as $o) {
+    foreach ($ob->outbounds as $o) {
         if (!addsub_singbox_is_node($o)) continue;
-        $tag = (string) $o['tag'];
+        $tag = (string) $o->tag;
         if ($label !== '') $tag = $label . ' ' . $tag;
         $base = $tag; $i = 1;
         while (isset($existing[$tag])) { $i++; $tag = $base . ' ' . $i; }
-        $o['tag'] = $tag;
+        $o->tag = $tag;
         $existing[$tag] = true;
-        $oa['outbounds'][] = $o;
+        $oa->outbounds[] = $o;
         $added[] = $tag;
     }
     if (!$added) return $a;
-    foreach ($oa['outbounds'] as &$o) {
-        if (is_array($o) && in_array(($o['type'] ?? ''), ['selector', 'urltest'], true) && isset($o['outbounds']) && is_array($o['outbounds'])) {
-            foreach ($added as $tg) if (!in_array($tg, $o['outbounds'], true)) $o['outbounds'][] = $tg;
+    foreach ($oa->outbounds as $o) {
+        if (is_object($o) && in_array(($o->type ?? ''), ['selector', 'urltest'], true) && isset($o->outbounds) && is_array($o->outbounds)) {
+            foreach ($added as $tg) if (!in_array($tg, $o->outbounds, true)) $o->outbounds[] = $tg;
         }
     }
-    unset($o);
     $enc = json_encode($oa, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     return $enc === false ? $a : $enc;
 }
 
 function addsub_xray_is_node($o) {
-    if (!is_array($o)) return false;
-    $proto = (string) ($o['protocol'] ?? '');
+    if (!is_object($o)) return false;
+    $proto = (string) ($o->protocol ?? '');
     if ($proto === '') return false;
     return !in_array($proto, ['freedom', 'blackhole', 'dns'], true);
 }
 
 function addsub_xray_collect($ob) {
     $nodes = [];
-    if (isset($ob['outbounds']) && is_array($ob['outbounds'])) {
-        foreach ($ob['outbounds'] as $o) if (addsub_xray_is_node($o)) $nodes[] = $o;
+    if (is_object($ob) && isset($ob->outbounds) && is_array($ob->outbounds)) {
+        foreach ($ob->outbounds as $o) if (addsub_xray_is_node($o)) $nodes[] = $o;
         return $nodes;
     }
-    $isList = ($ob !== [] && array_keys($ob) === range(0, count($ob) - 1));
-    if ($isList) {
+    if (is_array($ob)) {
         foreach ($ob as $el) {
-            if (is_array($el) && isset($el['outbounds']) && is_array($el['outbounds'])) {
-                foreach ($el['outbounds'] as $o) if (addsub_xray_is_node($o)) $nodes[] = $o;
+            if (is_object($el) && isset($el->outbounds) && is_array($el->outbounds)) {
+                foreach ($el->outbounds as $o) if (addsub_xray_is_node($o)) $nodes[] = $o;
             }
         }
     }
@@ -437,24 +437,24 @@ function addsub_xray_collect($ob) {
 }
 
 function addsub_merge_xray($a, $b) {
-    $oa = json_decode($a, true);
-    $ob = json_decode($b, true);
-    if (!is_array($oa) || !is_array($ob)) return $a;
+    $oa = json_decode((string) $a);
+    $ob = json_decode((string) $b);
+    if ((!is_object($oa) && !is_array($oa)) || (!is_object($ob) && !is_array($ob))) return $a;
     $nodes = addsub_xray_collect($ob);
     if (!$nodes) return $a;
-    if (isset($oa['outbounds']) && is_array($oa['outbounds'])) {
-        foreach ($nodes as $n) $oa['outbounds'][] = $n;
-    } else {
-        $isList = ($oa !== [] && array_keys($oa) === range(0, count($oa) - 1));
-        if (!$isList) return $a;
+    if (is_object($oa) && isset($oa->outbounds) && is_array($oa->outbounds)) {
+        foreach ($nodes as $n) $oa->outbounds[] = $n;
+    } elseif (is_array($oa)) {
         $done = false;
-        foreach ($oa as $k => $el) {
-            if (is_array($el) && isset($el['outbounds']) && is_array($el['outbounds'])) {
-                foreach ($nodes as $n) $oa[$k]['outbounds'][] = $n;
+        foreach ($oa as $el) {
+            if (is_object($el) && isset($el->outbounds) && is_array($el->outbounds)) {
+                foreach ($nodes as $n) $el->outbounds[] = $n;
                 $done = true;
             }
         }
         if (!$done) return $a;
+    } else {
+        return $a;
     }
     $enc = json_encode($oa, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     return $enc === false ? $a : $enc;
@@ -487,13 +487,14 @@ function addsub_stub_clash($a, $label) {
 }
 
 function addsub_stub_singbox($a, $label) {
-    $oa = json_decode($a, true);
-    if (!squadconf_is_singbox($oa)) return $a;
+    if (!squadconf_is_singbox(json_decode((string) $a, true))) return $a;
+    $oa = json_decode((string) $a);
+    if (!is_object($oa) || !isset($oa->outbounds) || !is_array($oa->outbounds)) return $a;
     $tag = $label; $existing = [];
-    foreach ($oa['outbounds'] as $o) if (is_array($o) && isset($o['tag'])) $existing[(string) $o['tag']] = true;
+    foreach ($oa->outbounds as $o) if (is_object($o) && isset($o->tag)) $existing[(string) $o->tag] = true;
     $base = $tag; $i = 1;
     while (isset($existing[$tag])) { $i++; $tag = $base . ' ' . $i; }
-    $oa['outbounds'][] = [
+    $oa->outbounds[] = [
         'type'        => 'shadowsocks',
         'tag'         => $tag,
         'server'      => '127.0.0.1',
@@ -501,26 +502,26 @@ function addsub_stub_singbox($a, $label) {
         'method'      => 'aes-128-gcm',
         'password'    => '1',
     ];
-    foreach ($oa['outbounds'] as &$o) {
-        if (is_array($o) && in_array(($o['type'] ?? ''), ['selector', 'urltest'], true) && isset($o['outbounds']) && is_array($o['outbounds'])) {
-            if (!in_array($tag, $o['outbounds'], true)) $o['outbounds'][] = $tag;
+    foreach ($oa->outbounds as $o) {
+        if (is_object($o) && in_array(($o->type ?? ''), ['selector', 'urltest'], true) && isset($o->outbounds) && is_array($o->outbounds)) {
+            if (!in_array($tag, $o->outbounds, true)) $o->outbounds[] = $tag;
         }
     }
-    unset($o);
     $enc = json_encode($oa, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     return $enc === false ? $a : $enc;
 }
 
 function addsub_stub_xray($a, $label) {
-    $oa = json_decode($a, true);
-    if (!is_array($oa)) return $a;
+    $oa = json_decode((string) $a);
     $node = ['protocol' => 'blackhole', 'settings' => (object) [], 'tag' => $label];
-    if (isset($oa['outbounds']) && is_array($oa['outbounds'])) {
-        $oa['outbounds'][] = $node;
+    if (is_object($oa) && isset($oa->outbounds) && is_array($oa->outbounds)) {
+        $oa->outbounds[] = $node;
+    } elseif (is_array($oa)) {
+        $done = false;
+        foreach ($oa as $el) if (is_object($el) && isset($el->outbounds) && is_array($el->outbounds)) { $el->outbounds[] = $node; $done = true; }
+        if (!$done) return $a;
     } else {
-        $isList = ($oa !== [] && array_keys($oa) === range(0, count($oa) - 1));
-        if (!$isList) return $a;
-        foreach ($oa as $k => $el) if (is_array($el) && isset($el['outbounds']) && is_array($el['outbounds'])) $oa[$k]['outbounds'][] = $node;
+        return $a;
     }
     $enc = json_encode($oa, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     return $enc === false ? $a : $enc;
