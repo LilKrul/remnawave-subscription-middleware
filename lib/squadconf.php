@@ -243,6 +243,8 @@ function awg_to_clash($parsed, $name) {
     if ($dns) $L[] = '    dns: [' . implode(', ', array_map('yaml_q', $dns)) . ']';
     if (!empty($if['MTU'])) $L[] = '    mtu: ' . (int) $if['MTU'];
     $L[] = '    udp: true';
+    $ka = (int) ($pe['PersistentKeepalive'] ?? 25);
+    if ($ka > 0) $L[] = '    persistent-keepalive: ' . $ka;
 
     $opt = [];
     foreach (['Jc' => 'jc', 'Jmin' => 'jmin', 'Jmax' => 'jmax', 'S1' => 's1', 'S2' => 's2', 'S3' => 's3', 'S4' => 's4'] as $src => $dst) {
