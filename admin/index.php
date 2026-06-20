@@ -489,6 +489,12 @@ if (isset($_GET['ajax']) && is_auth()) {
         if ($uuid !== '') { $de = ''; $devs = remnawave_user_hwids($uuid, $de); }
         $sq = [];
         foreach (($u['activeInternalSquads'] ?? []) as $s) if (is_array($s)) $sq[] = ['uuid' => (string) ($s['uuid'] ?? ''), 'name' => (string) ($s['name'] ?? '')];
+        $cu_su = (string) ($u['shortUuid'] ?? '');
+        if ($cu_su !== '') {
+            $cu_d = [];
+            foreach ($devs as $cu_dv) { if (!is_array($cu_dv)) continue; $cu_h = (string) ($cu_dv['hwid'] ?? ''); if ($cu_h !== '') $cu_d[$cu_h] = ['p' => (string) ($cu_dv['platform'] ?? ''), 'm' => (string) ($cu_dv['deviceModel'] ?? '')]; }
+            wglease_user_cache_put($cu_su, ['u' => (string) ($u['username'] ?? ''), 'lim' => $u['hwidDeviceLimit'] ?? null, 'd' => $cu_d]);
+        }
         echo json_encode(['ok' => true, 'user' => [
             'uuid'            => $uuid,
             'shortUuid'       => (string) ($u['shortUuid'] ?? ''),

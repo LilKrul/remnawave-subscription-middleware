@@ -416,3 +416,32 @@ function wglease_sizing_cached() {
     if (!is_array($tot)) $tot = [];
     return ['rows' => $rows, 'ts' => (int) setting('wgpool_sizing_ts', '0'), 'totals' => ['records' => (int) ($tot['records'] ?? 0), 'unique' => (int) ($tot['unique'] ?? 0)]];
 }
+
+
+function wglease_user_cache_ttl() { return 3600; }
+
+function wglease_user_cache() {
+    $j = (string) setting('wgpool_user_cache', '');
+    $m = $j !== '' ? json_decode($j, true) : [];
+    if (!is_array($m)) return [];
+    $now = time(); $ttl = wglease_user_cache_ttl(); $out = [];
+    foreach ($m as $su => $e) {
+        if (!is_array($e)) continue;
+        if (($now - (int) ($e['ts'] ?? 0)) > $ttl) continue;
+        $out[(string) $su] = $e;
+    }
+    return $out;
+}
+
+function wglease_user_cache_put($short_uuid, array $entry) {
+    $short_uuid = trim((string) $short_uuid);
+    if ($short_uuid === '') return;
+    $m = wglease_user_cache();
+    $entry['ts'] = time();
+    $m[$short_uuid] = $entry;
+    if (count($m) > 3000) {
+        uasort($m, fn($a, $b) => (int) ($b['ts'] ?? 0) <=> (int) ($a['ts'] ?? 0));
+        $m = array_slice($m, 0, 3000, true);
+    }
+    set_setting('wgpool_user_cache', json_encode($m, JSON_UNESCAPED_UNICODE));
+}

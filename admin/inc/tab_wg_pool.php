@@ -376,10 +376,15 @@
         .wg-issued-name{font-weight:600}
         .wg-tip{position:relative;cursor:help}
         .wg-tip:hover::after{content:attr(data-tip);position:absolute;left:0;bottom:145%;white-space:pre-line;text-align:left;min-width:210px;max-width:340px;background:var(--card);color:var(--text);border:1px solid var(--line);border-radius:9px;padding:.55rem .75rem;font-size:.76rem;font-weight:500;line-height:1.55;box-shadow:var(--shadow);z-index:30}
+        #wgTbl td:nth-child(6),#wgTbl th:nth-child(6){min-width:210px}
+        .wg-issued{display:inline-flex;align-items:baseline;gap:.3rem;max-width:210px;vertical-align:bottom}
+        .wg-issued>.wg-tip{display:inline-flex;align-items:baseline;gap:.3rem;min-width:0;max-width:100%}
+        .wg-issued-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
     </style>
     <?php include __DIR__ . '/_sqcfg_js.php'; ?>
     <script>
     window.SQCFG = <?= json_encode($sqcfg_edit ?? [], JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
+    window.WG_UCACHE = <?= json_encode(wglease_user_cache(), JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
     sqcfgInitEdit();
     sqcfgInitPager('wgTbl', 'wgPager', 'wgSize', 'wgpool_size');
     sqcfgInitFileBtn('wgFiles', 'wgFilesInfo');
@@ -438,6 +443,7 @@
     (function(){
         var cells = Array.prototype.slice.call(document.querySelectorAll('.wg-issued'));
         if (!cells.length) return;
+        var CACHE = window.WG_UCACHE || {};
         function esc(s){ var d=document.createElement('div'); d.textContent=(s==null?'':s); return d.innerHTML.replace(/"/g,'&quot;'); }
         function osFile(p){ p=String(p||'').toLowerCase();
             if(/ios|iphone|ipad|ipados|mac|darwin|os ?x/.test(p)) return 'apple';
@@ -463,8 +469,18 @@
                 : ('<span class="muted" style="font-size:.72rem">(на польз.)</span>');
             c.innerHTML = '<span class="wg-tip" data-tip="'+esc(tip)+'"><span class="wg-issued-name">'+esc(disp)+'</span> '+dev+(man?' <span class="muted">🔧</span>':'')+'</span>';
         }
+        function fromCache(c){
+            var su=c.dataset.su||'', e=su?CACHE[su]:null; if(!e) return false;
+            var hw=c.dataset.hwid||'', dv=(e.d&&e.d[hw])?e.d[hw]:null;
+            render(c, e.u||su, dv?(dv.m||''):'', dv?(dv.p||''):(c.dataset.plat||''), (e.lim!=null?e.lim:null));
+            return true;
+        }
         var bySu={};
-        cells.forEach(function(c){ render(c,'','',c.dataset.plat||'',null); var su=c.dataset.su||''; if(su)(bySu[su]=bySu[su]||[]).push(c); });
+        cells.forEach(function(c){
+            if(fromCache(c)) return;
+            render(c,'','',c.dataset.plat||'',null);
+            var su=c.dataset.su||''; if(su)(bySu[su]=bySu[su]||[]).push(c);
+        });
         Object.keys(bySu).forEach(function(su){
             fetch('?ajax=pool_user&q='+encodeURIComponent(su)).then(function(r){return r.json();}).then(function(d){
                 if(!d||!d.ok||!d.user) return;
