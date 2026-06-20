@@ -870,6 +870,28 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && is_auth()) {
         header('Location: index.php?tab=wg_pool'); exit();
     }
 
+    if ($action === 'bulk_edit_param') {
+        $ids = array_values(array_filter(array_map('intval', explode(',', (string) ($_POST['ids'] ?? ''))), fn($i) => $i > 0));
+        $param = (string) ($_POST['param'] ?? '');
+        $value = trim((string) ($_POST['value'] ?? ''));
+        $map = ['mtu' => ['interface', 'MTU', 'int'], 'dns' => ['interface', 'DNS', 'str'], 'keepalive' => ['peer', 'PersistentKeepalive', 'int'], 'allowedips' => ['peer', 'AllowedIPs', 'str']];
+        $n = 0;
+        if (isset($map[$param]) && $ids) {
+            [$sec, $key, $kind] = $map[$param];
+            $val = $kind === 'int' ? ($value === '' ? '' : (string) (int) $value) : $value;
+            foreach (squadconf_by_ids($ids) as $c) {
+                if (!in_array((string) ($c['type'] ?? ''), ['wireguard', 'amneziawg'], true)) continue;
+                $new = conf_set_param((string) $c['raw'], $sec, $key, $val);
+                $pp = squadconf_parse_any($new);
+                if (!is_array($pp) || empty($pp['ok'])) continue;
+                squadconf_update((int) $c['id'], squadconf_squads_of($c), $pp['type'], (string) ($c['name'] ?? ''), $new, json_encode($pp, JSON_UNESCAPED_UNICODE));
+                $n++;
+            }
+        }
+        flash($n ? ('Изменён параметр у конфигов: ' . $n) : 'Ничего не изменено (проверьте параметр и выбор)');
+        header('Location: index.php?tab=wg_pool'); exit();
+    }
+
     if ($action === 'toggle_squad_config') {
         squadconf_toggle((int) ($_POST['id'] ?? 0), ($_POST['enabled'] ?? '0') === '1');
         header('Location: index.php?tab=' . ((($_POST['ret'] ?? '') === 'wg_pool') ? 'wg_pool' : 'squad_configs')); exit();

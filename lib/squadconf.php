@@ -526,6 +526,32 @@ function squadconf_inject_singbox($body, array $configs) {
 
 function squadconf_xray_json_enabled() { return setting('squad_xray_json_inject', '0') === '1'; }
 
+function conf_set_param($raw, $section, $key, $value) {
+    $section = strtolower($section);
+    $lines = preg_split('/\r\n|\r|\n/', (string) $raw);
+    $cur = ''; $done = false; $out = [];
+    foreach ($lines as $ln) {
+        if (preg_match('/^\s*\[([A-Za-z]+)\]/', $ln, $m)) $cur = strtolower($m[1]);
+        if (!$done && $cur === $section && preg_match('/^\s*' . preg_quote($key, '/') . '\s*=/i', $ln)) {
+            if ($value !== '') $out[] = $key . ' = ' . $value;
+            $done = true;
+            continue;
+        }
+        $out[] = $ln;
+    }
+    if (!$done && $value !== '') {
+        $res = []; $ins = false;
+        foreach ($out as $ln) {
+            $res[] = $ln;
+            if (!$ins && preg_match('/^\s*\[([A-Za-z]+)\]/', $ln, $m) && strtolower($m[1]) === $section) {
+                $res[] = $key . ' = ' . $value; $ins = true;
+            }
+        }
+        $out = $res;
+    }
+    return implode("\n", $out);
+}
+
 function squadconf_supported_types($body, $format) {
     if ($format === 'clash') return ['wireguard', 'amneziawg', 'vless'];
     $trim = ltrim((string) $body);

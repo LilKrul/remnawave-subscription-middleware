@@ -217,6 +217,26 @@
             <input type="hidden" name="ret" value="wg_pool">
             <input type="hidden" name="ids" id="wgBulkIds">
         </form>
+        <div class="wg-editbar">
+            <span class="muted">Массово изменить параметр:</span>
+            <select id="wgEditParam" class="sqcfg-sel">
+                <option value="mtu">MTU</option>
+                <option value="keepalive">PersistentKeepalive</option>
+                <option value="dns">DNS</option>
+                <option value="allowedips">AllowedIPs</option>
+            </select>
+            <input type="text" id="wgEditValue" placeholder="значение (пусто — убрать поле)" style="min-width:200px;box-sizing:border-box">
+            <button type="button" id="wgEditSel" class="sqcfg-btn" disabled>Применить к выбранным</button>
+            <button type="button" id="wgEditAll" class="sqcfg-btn">Применить ко всем</button>
+        </div>
+        <form method="post" id="wgEditForm" style="display:none">
+            <input type="hidden" name="csrf" value="<?= h($token) ?>">
+            <input type="hidden" name="action" value="bulk_edit_param">
+            <input type="hidden" name="ret" value="wg_pool">
+            <input type="hidden" name="ids" id="wgEditIds">
+            <input type="hidden" name="param" id="wgEditParamH">
+            <input type="hidden" name="value" id="wgEditValueH">
+        </form>
         <table class="logtbl" id="wgTbl">
             <thead><tr><th style="width:1%"><input type="checkbox" id="wgChkAll" aria-label="Выбрать все"></th><th>Сквады</th><th>Тип</th><th>Метка</th><th>Статус</th><th>Выдан</th><th></th></tr></thead>
             <tbody>
@@ -340,6 +360,7 @@
         .sq-manual .sq-n{flex:none;line-height:1.15;font-size:.86rem}
         .wg-bulkbar{display:flex;align-items:center;gap:.75rem;margin:0 0 .8rem;flex-wrap:wrap}
         .wg-leasebar{display:flex;align-items:center;gap:.75rem;margin:0 0 .7rem;flex-wrap:wrap}
+        .wg-editbar{display:flex;align-items:center;gap:.6rem;margin:0 0 .8rem;flex-wrap:wrap}
         .wg-dupe-warn{color:var(--red);font-weight:600;font-size:.82rem}
         #wgTbl td:first-child,#wgTbl th:first-child{text-align:center}
         .osico{display:inline-block;width:15px;height:15px;vertical-align:-2px;background:var(--text-strong);-webkit-mask-repeat:no-repeat;mask-repeat:no-repeat;-webkit-mask-position:center;mask-position:center;-webkit-mask-size:contain;mask-size:contain}
@@ -371,6 +392,27 @@
             });
             function fin(){ hid.value = JSON.stringify(out); inp.disabled = true; done = true; form.submit(); }
         });
+    })();
+    (function(){
+        var form = document.getElementById('wgEditForm');
+        if (!form) return;
+        var selB = document.getElementById('wgEditSel'), allB = document.getElementById('wgEditAll');
+        var pIn = document.getElementById('wgEditParam'), vIn = document.getElementById('wgEditValue');
+        var idsH = document.getElementById('wgEditIds'), pH = document.getElementById('wgEditParamH'), vH = document.getElementById('wgEditValueH');
+        function chks(){ return Array.prototype.slice.call(document.querySelectorAll('.wg-chk')); }
+        function checked(){ return chks().filter(function(c){ return c.checked; }).map(function(c){ return c.value; }); }
+        function upd(){ if (selB) selB.disabled = checked().length === 0; }
+        document.addEventListener('change', function(e){ if (e.target && e.target.classList && (e.target.classList.contains('wg-chk') || e.target.id === 'wgChkAll')) upd(); });
+        function go(ids){
+            if (!ids.length) return;
+            var label = pIn.options[pIn.selectedIndex].text, v = vIn.value;
+            uiConfirm('Изменить «' + label + '» = "' + (v || '(убрать поле)') + '" у ' + ids.length + ' конфиг(ов)?', function(){
+                idsH.value = ids.join(','); pH.value = pIn.value; vH.value = v; form.submit();
+            }, 'Применить', false);
+        }
+        if (selB) selB.addEventListener('click', function(){ go(checked()); });
+        if (allB) allB.addEventListener('click', function(){ go(chks().map(function(c){ return c.value; })); });
+        upd();
     })();
     (function(){
         var all = document.getElementById('wgChkAll'), selBtn = document.getElementById('wgDelSel'), allBtn = document.getElementById('wgDelAll');
