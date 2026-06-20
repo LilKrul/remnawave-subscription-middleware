@@ -555,6 +555,7 @@ function xray_wg_outbound($parsed, $tag) {
         'secretKey' => (string) $if['PrivateKey'],
         'address'   => $addr ?: ['10.0.0.2/32'],
         'peers'     => [$peer],
+        'noKernelTun' => true,
     ];
     if (!empty($if['MTU'])) $settings['mtu'] = (int) $if['MTU'];
     $o = ['protocol' => 'wireguard', 'settings' => $settings];
