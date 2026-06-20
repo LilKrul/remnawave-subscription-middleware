@@ -64,7 +64,6 @@
                     <div class="pv pv4"><div class="pv-card"><div class="pv-dot"></div><div class="pv-l"></div><div class="pv-l"></div><div class="pv-b"></div></div></div>
                     <div class="nm">Минимализм</div></label>
             </div>
-            <div style="margin-top:.6rem"><button type="submit">💾 Сохранить дизайн</button></div>
         </form>
         <script>document.querySelectorAll('.lpick label').forEach(function(l){l.addEventListener('click',function(){document.querySelectorAll('.lpick label').forEach(function(x){x.classList.remove('sel');});l.classList.add('sel');});});</script>
     </div>
