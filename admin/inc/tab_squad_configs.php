@@ -240,9 +240,6 @@
         .sqcfg-hint b{color:var(--accent-text)}
         .sqcfg-hint ul{margin:.4rem 0 0;padding-left:1.1rem}
         .sqcfg-hint .warn-line{color:var(--c-warn-fg)}
-        .sqcfg-btn{background:transparent;border:1px solid var(--line);color:var(--text);border-radius:8px;padding:.4rem .75rem;font-size:.82rem;font-weight:600;cursor:pointer}
-        .sqcfg-btn.off{opacity:.65}
-        .sqcfg-edit{margin-right:.45rem}
         #sqEditModal label:not(.sq-item){display:block;margin-bottom:.3rem;font-weight:600;font-size:.82rem}
         .card label{display:block;margin-bottom:.35rem;font-weight:600;font-size:.85rem}
         .sq-tag{display:inline-block;background:var(--bg2);border:1px solid var(--line);border-radius:6px;padding:.08rem .45rem;font-size:.74rem;margin:.1rem .25rem .1rem 0;white-space:nowrap}
