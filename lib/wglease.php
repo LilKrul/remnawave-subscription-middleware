@@ -238,6 +238,25 @@ function wglease_del($id) {
     catch (Throwable $e) { return false; }
 }
 
+function wglease_reset_auto() {
+    wglease_ensure();
+    if (!($p = db())) return 0;
+    try {
+        $n = (int) $p->query('SELECT COUNT(*) FROM wg_lease WHERE manual = 0')->fetchColumn();
+        $p->exec('DELETE FROM wg_lease WHERE manual = 0');
+        return $n;
+    } catch (Throwable $e) { return 0; }
+}
+
+function wglease_dupes() {
+    wglease_ensure();
+    if (!($p = db())) return [];
+    $out = [];
+    try { foreach ($p->query('SELECT config_id, COUNT(*) c FROM wg_lease GROUP BY config_id HAVING COUNT(*) > 1') as $r) $out[(int) $r['config_id']] = (int) $r['c']; }
+    catch (Throwable $e) {}
+    return $out;
+}
+
 function wglease_list($pool_id = '') {
     wglease_ensure();
     if (!($p = db())) return [];

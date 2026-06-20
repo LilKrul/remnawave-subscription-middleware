@@ -858,6 +858,12 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && is_auth()) {
         header('Location: index.php?tab=' . ((($_POST['ret'] ?? '') === 'squad_configs') ? 'squad_configs' : 'wg_pool')); exit();
     }
 
+    if ($action === 'pool_reset_leases') {
+        $n = wglease_reset_auto();
+        flash('Сброшено авто-выдач: ' . $n . '. Пул переразложится при следующем чтении подписок.');
+        header('Location: index.php?tab=wg_pool'); exit();
+    }
+
     if ($action === 'toggle_squad_config') {
         squadconf_toggle((int) ($_POST['id'] ?? 0), ($_POST['enabled'] ?? '0') === '1');
         header('Location: index.php?tab=' . ((($_POST['ret'] ?? '') === 'wg_pool') ? 'wg_pool' : 'squad_configs')); exit();
@@ -1016,7 +1022,7 @@ if ($tab === 'subst' && remnawave_url() !== '' && remnawave_token() !== '') {
 
 $sqcfg_squads = []; $sqcfg_squads_err = ''; $sqcfg_names = [];
 $sqcfg_simple = []; $sqcfg_wg = [];
-$sqcfg_modes = []; $sqcfg_stock = []; $sqcfg_free = []; $sqcfg_leases = []; $sqcfg_lease_by_cfg = []; $sqcfg_hwid_plat = []; $sqcfg_reclaim_days = 14; $sqcfg_sizing = ['rows' => [], 'ts' => 0];
+$sqcfg_modes = []; $sqcfg_stock = []; $sqcfg_free = []; $sqcfg_leases = []; $sqcfg_lease_by_cfg = []; $sqcfg_hwid_plat = []; $sqcfg_dupes = []; $sqcfg_reclaim_days = 14; $sqcfg_sizing = ['rows' => [], 'ts' => 0];
 if ($tab === 'squad_configs' || $tab === 'wg_pool') {
     if (remnawave_url() !== '' && remnawave_token() !== '') $sqcfg_squads = remnawave_internal_squads($sqcfg_squads_err);
     foreach ($sqcfg_squads as $s) $sqcfg_names[$s['uuid']] = $s['name'];
@@ -1040,6 +1046,7 @@ if ($tab === 'wg_pool') {
         }
     }
     $sqcfg_hwid_plat = wglease_hwid_platforms();
+    $sqcfg_dupes = wglease_dupes();
     $sqcfg_sizing = wglease_sizing_cached();
 }
 $addsub_list = [];

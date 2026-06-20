@@ -197,6 +197,14 @@
         <?php if (!$sqcfg_wg): ?>
             <p class="muted">Пока пусто. Загрузите WG/AWG-конфиги выше.</p>
         <?php else: $sqcfg_edit = []; ?>
+        <div class="wg-leasebar">
+            <?php if ($sqcfg_dupes): ?><span class="wg-dupe-warn">⚠ дубли выдачи: <?= count($sqcfg_dupes) ?> конфиг(ов) числятся выданными более одного раза (наследие прошлых версий) — нажми «Сбросить выдачи»</span><?php endif; ?>
+            <form method="post" style="margin:0;margin-left:auto" onsubmit="return uiConfirmForm(this,'Сбросить все авто-выдачи пула? Ручные привязки останутся. Клиентам нужно будет один раз обновить подписку.')">
+                <input type="hidden" name="csrf" value="<?= h($token) ?>">
+                <input type="hidden" name="action" value="pool_reset_leases">
+                <button type="submit" class="sqcfg-btn" title="Удалить авто-выдачи (manual=0) — пул переразложится начисто, без дублей">↻ Сбросить выдачи</button>
+            </form>
+        </div>
         <div class="wg-bulkbar">
             <span id="wgChkCount" class="muted">Выбрано: 0</span>
             <span style="flex:1"></span>
@@ -322,6 +330,8 @@
         .sq-manual .sq-mtxt{display:flex;flex-direction:column;justify-content:center;gap:.05rem;flex:1;min-width:0}
         .sq-manual .sq-n{flex:none;line-height:1.15;font-size:.86rem}
         .wg-bulkbar{display:flex;align-items:center;gap:.75rem;margin:0 0 .8rem;flex-wrap:wrap}
+        .wg-leasebar{display:flex;align-items:center;gap:.75rem;margin:0 0 .7rem;flex-wrap:wrap}
+        .wg-dupe-warn{color:var(--red);font-weight:600;font-size:.82rem}
         #wgTbl td:first-child,#wgTbl th:first-child{text-align:center}
         .osico{display:inline-block;width:15px;height:15px;vertical-align:-2px;background:var(--text-strong);-webkit-mask-repeat:no-repeat;mask-repeat:no-repeat;-webkit-mask-position:center;mask-position:center;-webkit-mask-size:contain;mask-size:contain}
         .wg-issued-dev{display:inline-flex;align-items:center;gap:3px;opacity:.85}
