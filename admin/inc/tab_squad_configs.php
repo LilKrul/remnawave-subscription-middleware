@@ -166,8 +166,8 @@
         <?php if (!$sqcfg_simple): ?>
             <p class="muted">Пока пусто. Простые конфиги (VLESS) добавляются выше.</p>
         <?php else: $sqcfg_edit = []; ?>
-        <style>#sqcfgTbl tbody tr:nth-child(n+<?= $sq_psize + 1 ?>){display:none}#sqcfgPager{min-height:2.1rem}</style>
-        <table class="logtbl" id="sqcfgTbl">
+        <style>#sqcfgTbl.pgr-pre tbody tr:nth-child(n+<?= $sq_psize + 1 ?>){display:none}#sqcfgPager{min-height:2.1rem}</style>
+        <table class="logtbl pgr-pre" id="sqcfgTbl">
             <thead><tr><th>Сквады</th><th>Тип</th><th>Метка</th><th>Статус</th><th></th></tr></thead>
             <tbody>
             <?php foreach ($sqcfg_simple as $c):

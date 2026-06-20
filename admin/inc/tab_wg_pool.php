@@ -293,8 +293,8 @@ if (($sqcfg_sizing['rows'] ?? []) && $wgp_ts > 0) {
             <input type="hidden" name="param" id="wgEditParamH">
             <input type="hidden" name="value" id="wgEditValueH">
         </form>
-        <style>#wgTbl tbody tr:nth-child(n+<?= $wg_psize + 1 ?>){display:none}#wgPager{min-height:2.1rem}</style>
-        <table class="logtbl" id="wgTbl">
+        <style>#wgTbl.pgr-pre tbody tr:nth-child(n+<?= $wg_psize + 1 ?>){display:none}#wgPager{min-height:2.1rem}</style>
+        <table class="logtbl pgr-pre" id="wgTbl">
             <thead><tr><th style="width:1%"><input type="checkbox" id="wgChkAll" aria-label="Выбрать все"></th><th>Сквады</th><th>Тип</th><th>Метка</th><th>Статус</th><th>Выдан</th><th></th></tr></thead>
             <tbody>
             <?php foreach ($sqcfg_wg as $c):

@@ -119,6 +119,7 @@
         }
         window.SQCFGP = { setSize: function(v){ if (SIZES.indexOf(v) < 0) v = 25; size = v; page = 1; try { localStorage.setItem(storeKey, String(v)); } catch (e) {} pgrCkSet(v); render(); } };
         var sel = document.getElementById(sizeId); if (sel) sel.value = String(size);
+        var tEl0 = document.getElementById(tblId); if (tEl0) tEl0.classList.remove('pgr-pre');
         render();
     };
         window.sqcfgInitManual = function(NAMES){
