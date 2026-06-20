@@ -236,11 +236,8 @@
                     </form>
                 </td>
                 <td>
-                <?php if ($lz): $lwho = trim((string) ($lz['short_uuid'] ?? '')); ?>
-                    <span class="tag ok">выдан</span>
-                    <?php if ($lwho !== ''): ?><span style="font-family:monospace;font-size:.74rem"><?= h($lwho) ?></span><?php endif; ?>
-                    <?php if (!empty($lz['hwid'])): ?><span class="muted" style="font-size:.72rem">📱 <?= h(mb_substr((string) $lz['hwid'], 0, 10)) ?></span><?php else: ?><span class="muted" style="font-size:.72rem">на польз.</span><?php endif; ?>
-                    <?php if ((int) ($lz['manual'] ?? 0) === 1): ?><span class="muted" title="ручная привязка">🔧</span><?php endif; ?>
+                <?php if ($lz): $lsu = trim((string) ($lz['short_uuid'] ?? '')); $lhw = (string) ($lz['hwid'] ?? ''); $lplat = $lhw !== '' ? (string) ($sqcfg_hwid_plat[$lhw] ?? '') : ''; ?>
+                    <span class="wg-issued" data-su="<?= h($lsu) ?>" data-hwid="<?= h($lhw) ?>" data-plat="<?= h($lplat) ?>" data-manual="<?= (int) ($lz['manual'] ?? 0) ?>"><?= h($lsu !== '' ? $lsu : '—') ?></span>
                 <?php else: ?>
                     <span class="muted">свободен</span>
                 <?php endif; ?>
@@ -326,6 +323,9 @@
         .sq-manual .sq-n{flex:none;line-height:1.15;font-size:.86rem}
         .wg-bulkbar{display:flex;align-items:center;gap:.75rem;margin:0 0 .8rem;flex-wrap:wrap}
         #wgTbl td:first-child,#wgTbl th:first-child{text-align:center}
+        .osico{display:inline-block;width:15px;height:15px;vertical-align:-2px;background:var(--text-strong);-webkit-mask-repeat:no-repeat;mask-repeat:no-repeat;-webkit-mask-position:center;mask-position:center;-webkit-mask-size:contain;mask-size:contain}
+        .wg-issued-dev{display:inline-flex;align-items:center;gap:3px;cursor:help;opacity:.85}
+        .wg-issued-name{font-weight:600}
     </style>
     <?php include __DIR__ . '/_sqcfg_js.php'; ?>
     <script>
@@ -363,6 +363,43 @@
         if (selBtn) selBtn.addEventListener('click', function(){ var ids = chks().filter(function(c){ return c.checked; }).map(function(c){ return c.value; }); go(ids, 'Удалить выбранные конфиги: ' + ids.length + '?'); });
         if (allBtn) allBtn.addEventListener('click', function(){ var ids = chks().map(function(c){ return c.value; }); go(ids, 'Удалить ВСЕ ' + ids.length + ' конфигов из пула? Отменить нельзя.'); });
         upd();
+    })();
+    (function(){
+        var cells = Array.prototype.slice.call(document.querySelectorAll('.wg-issued'));
+        if (!cells.length) return;
+        function esc(s){ var d=document.createElement('div'); d.textContent=(s==null?'':s); return d.innerHTML; }
+        function osFile(p){ p=String(p||'').toLowerCase();
+            if(/ios|iphone|ipad|ipados|mac|darwin|os ?x/.test(p)) return 'apple';
+            if(/android/.test(p)) return 'android';
+            if(/win/.test(p)) return 'windows';
+            if(/linux|ubuntu|debian|fedora|arch|centos/.test(p)) return 'linux';
+            return 'device'; }
+        function ico(f){ return '<span class="osico" style="-webkit-mask-image:url(assets/os/'+f+'.svg);mask-image:url(assets/os/'+f+'.svg)"></span>'; }
+        function render(c, name, model, plat, lim){
+            var su=c.dataset.su||'', hw=c.dataset.hwid||'', man=c.dataset.manual==='1';
+            plat = plat || c.dataset.plat || '';
+            var disp = name || su || '—';
+            var tip = hw
+                ? ((name?name+' · ':'') + su + ' | ' + (model?model+' · ':'') + (plat||'ОС?') + ' | hwid: ' + hw + (lim!=null?(' | лимит устройств: '+lim):''))
+                : ((name?name+' · ':'') + su + ' | привязка на пользователя' + (lim!=null?(' | лимит устройств: '+lim):''));
+            var dev = hw
+                ? ('<span class="wg-issued-dev" title="'+esc(tip)+'">('+ico('device')+ico(osFile(plat))+')</span>')
+                : (' <span class="muted" style="font-size:.72rem" title="'+esc(tip)+'">(на польз.)</span>');
+            c.innerHTML = '<span class="wg-issued-name" title="'+esc(tip)+'">'+esc(disp)+'</span> '+dev+(man?' <span class="muted" title="ручная привязка">🔧</span>':'');
+        }
+        var bySu={};
+        cells.forEach(function(c){ render(c,'','',c.dataset.plat||'',null); var su=c.dataset.su||''; if(su)(bySu[su]=bySu[su]||[]).push(c); });
+        Object.keys(bySu).forEach(function(su){
+            fetch('?ajax=pool_user&q='+encodeURIComponent(su)).then(function(r){return r.json();}).then(function(d){
+                if(!d||!d.ok||!d.user) return;
+                var uname=d.user.username||su, lim=(d.user.hwidDeviceLimit!=null?d.user.hwidDeviceLimit:null), devs=d.devices||[];
+                bySu[su].forEach(function(c){
+                    var hw=c.dataset.hwid||'', dev=null;
+                    for(var i=0;i<devs.length;i++){ if(String(devs[i].hwid||'')===hw){ dev=devs[i]; break; } }
+                    render(c, uname, dev?(dev.deviceModel||''):'', dev?(dev.platform||''):(c.dataset.plat||''), lim);
+                });
+            }).catch(function(){});
+        });
     })();
     (function(){
         var NAMES = <?= json_encode($sqcfg_names, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;

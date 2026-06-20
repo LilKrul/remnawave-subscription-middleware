@@ -260,6 +260,15 @@ function wglease_manual_count() {
     catch (Throwable $e) { return 0; }
 }
 
+function wglease_hwid_platforms() {
+    wglease_ensure();
+    if (!($p = db())) return [];
+    $out = [];
+    try { foreach ($p->query('SELECT hwid, platform FROM hwid_devices') as $r) { $h = (string) ($r['hwid'] ?? ''); if ($h !== '') $out[$h] = (string) ($r['platform'] ?? ''); } }
+    catch (Throwable $e) {}
+    return $out;
+}
+
 function wglease_hwid_upsert($user_uuid, $hwid, $short_uuid = '', $platform = '') {
     wglease_ensure();
     $user_uuid = trim((string) $user_uuid); $hwid = trim((string) $hwid);
