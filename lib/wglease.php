@@ -56,6 +56,7 @@ function wglease_ensure() {
             )");
         }
     } catch (Throwable $e) { error_log('submw wglease ensure: ' . $e->getMessage()); }
+    try { $p->exec('CREATE UNIQUE INDEX uq_wgl_cfg ON wg_lease (config_id)'); } catch (Throwable $e) {}
 }
 
 function wglease_mode($squad_uuid) {
@@ -244,6 +245,7 @@ function wglease_reset_auto() {
     try {
         $n = (int) $p->query('SELECT COUNT(*) FROM wg_lease WHERE manual = 0')->fetchColumn();
         $p->exec('DELETE FROM wg_lease WHERE manual = 0');
+        try { $p->exec('CREATE UNIQUE INDEX uq_wgl_cfg ON wg_lease (config_id)'); } catch (Throwable $e) {}
         return $n;
     } catch (Throwable $e) { return 0; }
 }
