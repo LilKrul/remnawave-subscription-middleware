@@ -93,7 +93,12 @@
     };
     window.sqcfgInitPager = function(tblId, pagerId, sizeId, storeKey){
         var SIZES = [25, 50, 100, 200], size = 25, page = 1;
-        try { var s = parseInt(localStorage.getItem(storeKey), 10); if (SIZES.indexOf(s) > -1) size = s; } catch (e) {}
+        var PGK = 'pgr_' + storeKey;
+        function pgrCkGet(){ var m = document.cookie.match(new RegExp('(?:^|;\\s*)' + PGK + '=([^;]*)')); return m ? parseInt(m[1], 10) : NaN; }
+        function pgrCkSet(v){ try { document.cookie = PGK + '=' + v + ';path=/;max-age=31536000;samesite=Lax'; } catch (e) {} }
+        var cv = pgrCkGet();
+        if (SIZES.indexOf(cv) > -1) { size = cv; }
+        else { try { var s = parseInt(localStorage.getItem(storeKey), 10); if (SIZES.indexOf(s) > -1) { size = s; pgrCkSet(s); } } catch (e) {} }
         function rows(){ var t = document.getElementById(tblId); if (!t || !t.tBodies.length) return []; return Array.prototype.slice.call(t.tBodies[0].rows); }
         function render(){
             var all = rows(), total = all.length, per = size, pages = Math.max(1, Math.ceil(total / per));
@@ -112,7 +117,7 @@
                 } else bot.innerHTML = '';
             }
         }
-        window.SQCFGP = { setSize: function(v){ if (SIZES.indexOf(v) < 0) v = 25; size = v; page = 1; try { localStorage.setItem(storeKey, String(v)); } catch (e) {} render(); } };
+        window.SQCFGP = { setSize: function(v){ if (SIZES.indexOf(v) < 0) v = 25; size = v; page = 1; try { localStorage.setItem(storeKey, String(v)); } catch (e) {} pgrCkSet(v); render(); } };
         var sel = document.getElementById(sizeId); if (sel) sel.value = String(size);
         render();
     };

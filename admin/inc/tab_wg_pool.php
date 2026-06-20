@@ -1,3 +1,4 @@
+<?php $wg_psize = pager_cookie_size('wgpool_size'); ?>
     <section class="<?= coll_cls('wgpool_help') ?>" data-coll="wgpool_help">
         <button type="button" class="coll-head" onclick="collToggle(this)"><span>Как работает пул и почему так</span>
             <span class="coll-hr"><svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></span>
@@ -185,10 +186,10 @@
             <div class="loghead-r">
                 <label class="pgr-size" style="display:inline-flex;align-items:center;gap:.4rem;margin:0;font-weight:400">На странице:
                     <select id="wgSize" onchange="SQCFGP.setSize(parseInt(this.value,10))">
-                        <option value="25">25</option>
-                        <option value="50">50</option>
-                        <option value="100">100</option>
-                        <option value="200">200</option>
+                        <option value="25"<?= $wg_psize==25?' selected':'' ?>>25</option>
+                        <option value="50"<?= $wg_psize==50?' selected':'' ?>>50</option>
+                        <option value="100"<?= $wg_psize==100?' selected':'' ?>>100</option>
+                        <option value="200"<?= $wg_psize==200?' selected':'' ?>>200</option>
                     </select>
                 </label>
             </div>
@@ -241,6 +242,7 @@
             <input type="hidden" name="param" id="wgEditParamH">
             <input type="hidden" name="value" id="wgEditValueH">
         </form>
+        <style>#wgTbl tbody tr:nth-child(n+<?= $wg_psize + 1 ?>){display:none}#wgPager{min-height:2.1rem}</style>
         <table class="logtbl" id="wgTbl">
             <thead><tr><th style="width:1%"><input type="checkbox" id="wgChkAll" aria-label="Выбрать все"></th><th>Сквады</th><th>Тип</th><th>Метка</th><th>Статус</th><th>Выдан</th><th></th></tr></thead>
             <tbody>

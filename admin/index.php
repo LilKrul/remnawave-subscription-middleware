@@ -1245,6 +1245,10 @@ function navacc_cls($key, $active_in) {
     $closed = array_key_exists('n_' . $key, $m) ? $m['n_' . $key] : true;
     return 'navacc' . ($closed ? ' closed' : '');
 }
+function pager_cookie_size($store_key, $default = 25) {
+    $v = (int) ($_COOKIE['pgr_' . $store_key] ?? 0);
+    return in_array($v, [25, 50, 100, 200], true) ? $v : $default;
+}
 function nav_link($key, $it, $active, $badge = false) {
     $svg = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' . $it[1] . '</svg>';
     $dot = $badge ? '<span class="nav-dot" title="Доступно обновление"></span>' : '';
