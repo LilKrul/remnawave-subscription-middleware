@@ -218,16 +218,17 @@
             <input type="hidden" name="ids" id="wgBulkIds">
         </form>
         <div class="wg-editbar">
-            <span class="muted">Массово изменить параметр:</span>
+            <span class="muted">Массово изменить:</span>
             <select id="wgEditParam" class="sqcfg-sel">
                 <option value="mtu">MTU</option>
                 <option value="keepalive">PersistentKeepalive</option>
                 <option value="dns">DNS</option>
                 <option value="allowedips">AllowedIPs</option>
             </select>
-            <input type="text" id="wgEditValue" placeholder="значение (пусто — убрать поле)" style="min-width:200px;box-sizing:border-box">
-            <button type="button" id="wgEditSel" class="sqcfg-btn" disabled>Применить к выбранным</button>
-            <button type="button" id="wgEditAll" class="sqcfg-btn">Применить ко всем</button>
+            <span class="muted">=</span>
+            <input type="text" id="wgEditValue" class="we-val" placeholder="значение (пусто — убрать поле)">
+            <button type="button" id="wgEditSel" class="sqcfg-btn" disabled>К выбранным</button>
+            <button type="button" id="wgEditAll" class="sqcfg-btn">Ко всем</button>
         </div>
         <form method="post" id="wgEditForm" style="display:none">
             <input type="hidden" name="csrf" value="<?= h($token) ?>">
@@ -360,7 +361,8 @@
         .sq-manual .sq-n{flex:none;line-height:1.15;font-size:.86rem}
         .wg-bulkbar{display:flex;align-items:center;gap:.75rem;margin:0 0 .8rem;flex-wrap:wrap}
         .wg-leasebar{display:flex;align-items:center;gap:.75rem;margin:0 0 .7rem;flex-wrap:wrap}
-        .wg-editbar{display:flex;align-items:center;gap:.6rem;margin:0 0 .8rem;flex-wrap:wrap}
+        .wg-editbar{display:flex;align-items:center;gap:.5rem;margin:0 0 .8rem;flex-wrap:wrap}
+        .wg-editbar .we-val{flex:1 1 180px;min-width:140px;box-sizing:border-box}
         .wg-dupe-warn{color:var(--red);font-weight:600;font-size:.82rem}
         #wgTbl td:first-child,#wgTbl th:first-child{text-align:center}
         .osico{display:inline-block;width:15px;height:15px;vertical-align:-2px;background:var(--text-strong);-webkit-mask-repeat:no-repeat;mask-repeat:no-repeat;-webkit-mask-position:center;mask-position:center;-webkit-mask-size:contain;mask-size:contain}
