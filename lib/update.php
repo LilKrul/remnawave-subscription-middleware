@@ -44,25 +44,32 @@ function update_path_ok($rel) {
 function update_http_get($url, &$err = null, $accept = 'application/vnd.github+json') {
     $err = null;
     if (!function_exists('curl_init')) { $err = 'curl недоступен'; return null; }
-    $ch = curl_init($url);
-    curl_setopt_array($ch, [
-        CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_FOLLOWLOCATION => true,
-        CURLOPT_MAXREDIRS      => 5,
-        CURLOPT_TIMEOUT        => 12,
-        CURLOPT_CONNECTTIMEOUT => 6,
-        CURLOPT_USERAGENT      => 'submw-updater',
-        CURLOPT_ENCODING       => '',
-        CURLOPT_HTTPHEADER     => ['Accept: ' . $accept, 'X-GitHub-Api-Version: 2022-11-28'],
-    ]);
-    $body = curl_exec($ch);
-    if ($body === false) { $err = 'Сеть: ' . curl_error($ch); curl_close($ch); return null; }
-    $code = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    curl_close($ch);
-    if ($code === 403 || $code === 429) { $err = 'GitHub: лимит запросов (' . $code . '), попробуйте позже'; return null; }
-    if ($code === 404) { $err = 'GitHub: не найдено (404) — проверьте репозиторий/ветку'; return null; }
-    if ($code < 200 || $code >= 300) { $err = 'GitHub HTTP ' . $code; return null; }
-    return $body;
+    $attempts = 3;
+    for ($i = 1; $i <= $attempts; $i++) {
+        $ch = curl_init($url);
+        curl_setopt_array($ch, [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_FOLLOWLOCATION => true,
+            CURLOPT_MAXREDIRS      => 5,
+            CURLOPT_TIMEOUT        => 20,
+            CURLOPT_CONNECTTIMEOUT => 8,
+            CURLOPT_USERAGENT      => 'submw-updater',
+            CURLOPT_ENCODING       => '',
+            CURLOPT_HTTPHEADER     => ['Accept: ' . $accept, 'X-GitHub-Api-Version: 2022-11-28'],
+        ]);
+        $body = curl_exec($ch);
+        $neterr = ($body === false) ? curl_error($ch) : '';
+        $code = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+        if ($body === false) { $err = 'Сеть: ' . $neterr; if ($i < $attempts) { usleep(800000); continue; } return null; }
+        if ($code === 403 || $code === 429) { $err = 'GitHub: лимит запросов (' . $code . '), попробуйте позже'; return null; }
+        if ($code === 404) { $err = 'GitHub: не найдено (404) — проверьте репозиторий/ветку'; return null; }
+        if ($code >= 500) { $err = 'GitHub HTTP ' . $code; if ($i < $attempts) { usleep(800000); continue; } return null; }
+        if ($code < 200 || $code >= 300) { $err = 'GitHub HTTP ' . $code; return null; }
+        $err = null;
+        return $body;
+    }
+    return null;
 }
 
 function update_api($path, &$err = null) {
