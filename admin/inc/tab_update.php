@@ -72,7 +72,7 @@ $u_branches  = array_values(array_unique(array_filter(['main', 'dev', $u_branch]
         Обновление прослойки с GitHub по коммитам: тянутся только изменённые файлы из <b><?= h(update_repo()) ?></b> (ветка <b><?= h(update_branch()) ?></b>). Git на сервере не нужен — только доступ к GitHub. Проверка идёт автоматически раз в 12 часов; пункт меню «Обновление» подсвечивается, когда появились новые коммиты.
     </div>
 
-    <section class="coll" data-coll="update_perms">
+    <section class="<?= coll_cls('update_perms') ?>" data-coll="update_perms">
         <button type="button" class="coll-head" onclick="collToggle(this)"><span>🔑 Шаг 1 — права на запись (нужно для кнопки «Обновить»)</span>
             <span class="coll-hr"><svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></span>
         </button>
@@ -185,7 +185,7 @@ $u_branches  = array_values(array_unique(array_filter(['main', 'dev', $u_branch]
     </div>
     <?php endif; ?>
 
-    <section class="coll collapsed" data-coll="update_help">
+    <section class="<?= coll_cls('update_help', true) ?>" data-coll="update_help">
         <button type="button" class="coll-head" onclick="collToggle(this)"><span>❓ Как это работает и на что обратить внимание</span>
             <span class="coll-hr"><svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></span>
         </button>

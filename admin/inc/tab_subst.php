@@ -80,7 +80,7 @@
         </form>
     </div>
 
-    <section class="coll collapsed" data-coll="g_squad_help">
+    <section class="<?= coll_cls('g_squad_help', true) ?>" data-coll="g_squad_help">
         <button type="button" class="coll-head" onclick="collToggle(this)"><span>📘 Как сделать сквад с ремарками в панели</span>
             <span class="coll-hr"><svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></span>
         </button>

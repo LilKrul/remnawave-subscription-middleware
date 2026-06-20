@@ -1,4 +1,4 @@
-    <section class="coll" data-coll="wh_env">
+    <section class="<?= coll_cls('wh_env') ?>" data-coll="wh_env">
         <button type="button" class="coll-head" onclick="collToggle(this)"><span>Как включить вебхук в Remnawave</span>
             <span class="coll-hr"><svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></span>
         </button>
@@ -59,7 +59,7 @@ WEBHOOK_SECRET_HEADER=<?= h(webhook_secret() ?: '<секрет из «Подкл
         </form>
     </div>
 
-    <section class="coll collapsed" data-coll="next_branding">
+    <section class="<?= coll_cls('next_branding', true) ?>" data-coll="next_branding">
         <button type="button" class="coll-head" onclick="collToggle(this)">← Вернуться в Брендинг
             <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
         </button>

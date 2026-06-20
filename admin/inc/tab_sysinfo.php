@@ -91,7 +91,7 @@ $si_ntot = (isset($si_pn['total']) && $si_pn['total'] !== null) ? (int) $si_pn['
             <div class="si-chart-x"><span>−60 мин</span><span>сейчас</span></div>
         </div>
 
-        <section class="coll collapsed" data-coll="sysinfo_peaks">
+        <section class="<?= coll_cls('sysinfo_peaks', true) ?>" data-coll="sysinfo_peaks">
             <button type="button" class="coll-head" onclick="collToggle(this)"><span>Аномальные пики нагрузки</span>
                 <span class="coll-hr"><svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></span>
             </button>

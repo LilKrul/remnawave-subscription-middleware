@@ -1223,6 +1223,28 @@ $nav_sections = [
     ['l' => 'Доступ / подмена', 'coll' => true,  'k' => 'access', 'items' => ['rules', 'hwid', 'overrides', 'squad_configs', 'wg_pool', 'addsub']],
     ['l' => 'Обслуживание',     'coll' => false, 'k' => 'maint',  'items' => ['sysinfo', 'update', 'migrate']],
 ];
+function submw_ui_cookie() {
+    static $m = null;
+    if ($m !== null) return $m;
+    $m = [];
+    foreach (explode(';', (string) ($_COOKIE['submw_ui'] ?? '')) as $kv) {
+        $kv = trim($kv); if ($kv === '') continue;
+        $p = explode(':', $kv, 2); if (count($p) !== 2) continue;
+        $m[$p[0]] = ($p[1] === '1');
+    }
+    return $m;
+}
+function coll_cls($key, $default_collapsed = false) {
+    $m = submw_ui_cookie();
+    $c = array_key_exists('c_' . $key, $m) ? $m['c_' . $key] : (bool) $default_collapsed;
+    return 'coll' . ($c ? ' collapsed' : '');
+}
+function navacc_cls($key, $active_in) {
+    if ($active_in) return 'navacc';
+    $m = submw_ui_cookie();
+    $closed = array_key_exists('n_' . $key, $m) ? $m['n_' . $key] : true;
+    return 'navacc' . ($closed ? ' closed' : '');
+}
 function nav_link($key, $it, $active, $badge = false) {
     $svg = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' . $it[1] . '</svg>';
     $dot = $badge ? '<span class="nav-dot" title="Доступно обновление"></span>' : '';
@@ -1240,7 +1262,7 @@ function nav_link($key, $it, $active, $badge = false) {
                         <?= nav_link($key, $nav[$key], $tab === $key, $key === 'update' && update_available()) ?>
                     <?php endforeach; ?>
                 <?php else: ?>
-                    <div class="navacc<?= $active_in ? '' : ' closed' ?>" data-acc="<?= h($sec['k']) ?>">
+                    <div class="<?= navacc_cls($sec['k'], $active_in) ?>" data-acc="<?= h($sec['k']) ?>">
                         <button type="button" class="navacc-h" onclick="navAcc(this)">
                             <span><?= h($sec['l']) ?></span>
                             <svg class="navacc-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
@@ -1451,13 +1473,9 @@ if(window.matchMedia){matchMedia('(prefers-color-scheme: dark)').addEventListene
         form.addEventListener('focusout',function(e){var t=e.target;if(!t.matches('input,textarea'))return;if(t.type==='password'||t.type==='checkbox'||t.type==='radio'||t.type==='submit'||t.type==='button')return;if(val(t)===snap.get(t))return;send(t);});
         form.addEventListener('submit',function(e){e.preventDefault();send(null);});
     });
-    window.collToggle=function(b){var s=b.closest('.coll');if(!s)return;s.classList.toggle('collapsed');if(!/^next_/.test(s.dataset.coll||'')){try{localStorage.setItem('coll_'+s.dataset.coll,s.classList.contains('collapsed')?'1':'0');}catch(e){}}};
-    document.querySelectorAll('.coll').forEach(function(s){if(/^next_/.test(s.dataset.coll||''))return;try{var v=localStorage.getItem('coll_'+s.dataset.coll);if(v==='1')s.classList.add('collapsed');else if(v==='0')s.classList.remove('collapsed');}catch(e){}});
-    window.navAcc=function(b){var s=b.closest('.navacc');if(!s)return;s.classList.toggle('closed');try{localStorage.setItem('nav_'+s.dataset.acc,s.classList.contains('closed')?'1':'0');}catch(e){}};
-    document.querySelectorAll('.navacc').forEach(function(s){
-        if(s.querySelector('a.active')){s.classList.remove('closed');return;}
-        try{var v=localStorage.getItem('nav_'+s.dataset.acc);if(v==='0')s.classList.remove('closed');else if(v==='1')s.classList.add('closed');}catch(e){}
-    });
+    function uiCookieSet(k,v){try{var raw=(document.cookie.match(/(?:^|;\s*)submw_ui=([^;]*)/)||[])[1]||'';var parts=raw?decodeURIComponent(raw).split(';').filter(Boolean):[];var map={};parts.forEach(function(p){var i=p.indexOf(':');if(i>0)map[p.slice(0,i)]=p.slice(i+1);});map[k]=v?'1':'0';var out=Object.keys(map).map(function(x){return x+':'+map[x];}).join(';');document.cookie='submw_ui='+encodeURIComponent(out)+';path=/;max-age=31536000;samesite=Lax';}catch(e){}}
+    window.collToggle=function(b){var s=b.closest('.coll');if(!s)return;s.classList.toggle('collapsed');var k=s.dataset.coll||'';if(k&&!/^next_/.test(k)){var c=s.classList.contains('collapsed');try{localStorage.setItem('coll_'+k,c?'1':'0');}catch(e){}uiCookieSet('c_'+k,c);}};
+    window.navAcc=function(b){var s=b.closest('.navacc');if(!s)return;s.classList.toggle('closed');var k=s.dataset.acc||'';var c=s.classList.contains('closed');try{localStorage.setItem('nav_'+k,c?'1':'0');}catch(e){}uiCookieSet('n_'+k,c);};
     document.addEventListener('click',function(e){var app=document.querySelector('.rw-app');if(app&&app.classList.contains('nav-open')&&!e.target.closest('.rw-side')&&!e.target.closest('.navtoggle'))app.classList.remove('nav-open');});
     try{document.cookie='tzoff='+(-new Date().getTimezoneOffset())+';path=/;max-age=31536000;samesite=Lax';}catch(e){}
     ok.addEventListener('click',function(){var f=cb; uiDlgClose(); if(f)f();});

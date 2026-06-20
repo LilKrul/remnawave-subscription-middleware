@@ -1,4 +1,4 @@
-    <section class="coll" data-coll="wgpool_help">
+    <section class="<?= coll_cls('wgpool_help') ?>" data-coll="wgpool_help">
         <button type="button" class="coll-head" onclick="collToggle(this)"><span>Как работает пул и почему так</span>
             <span class="coll-hr"><svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></span>
         </button>
@@ -14,7 +14,7 @@
         </div>
     </section>
 
-    <section class="coll" data-coll="wgpool_upload">
+    <section class="<?= coll_cls('wgpool_upload') ?>" data-coll="wgpool_upload">
         <button type="button" class="coll-head" onclick="collToggle(this)"><span>Загрузка WG / AWG конфигов</span>
             <span class="coll-hr"><svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></span>
         </button>
@@ -66,7 +66,7 @@
         </div>
     </section>
 
-    <section class="coll" data-coll="wgpool_modes">
+    <section class="<?= coll_cls('wgpool_modes') ?>" data-coll="wgpool_modes">
         <button type="button" class="coll-head" onclick="collToggle(this)"><span>Режим пула по сквадам</span>
             <span class="coll-hr"><svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></span>
         </button>
@@ -115,7 +115,7 @@
         </div>
     </section>
 
-    <section class="coll" data-coll="wgpool_manual">
+    <section class="<?= coll_cls('wgpool_manual') ?>" data-coll="wgpool_manual">
         <button type="button" class="coll-head" onclick="collToggle(this)"><span>Ручная привязка конфига</span>
             <span class="coll-hr"><svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></span>
         </button>

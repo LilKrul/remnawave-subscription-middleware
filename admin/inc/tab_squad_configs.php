@@ -1,4 +1,4 @@
-    <section class="coll" data-coll="sqcfg_about">
+    <section class="<?= coll_cls('sqcfg_about') ?>" data-coll="sqcfg_about">
         <button type="button" class="coll-head" onclick="collToggle(this)"><span>Что это и как настраивать</span>
             <span class="coll-hr"><svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></span>
         </button>
@@ -23,7 +23,7 @@
         </form>
     </div>
 
-    <section class="coll" data-coll="sqcfg_add">
+    <section class="<?= coll_cls('sqcfg_add') ?>" data-coll="sqcfg_add">
         <button type="button" class="coll-head" onclick="collToggle(this)"><span>Добавить простой конфиг (VLESS)</span>
             <span class="coll-hr"><svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></span>
         </button>
@@ -68,7 +68,7 @@
         </div>
     </section>
 
-    <section class="coll" data-coll="sqcfg_manual">
+    <section class="<?= coll_cls('sqcfg_manual') ?>" data-coll="sqcfg_manual">
         <button type="button" class="coll-head" onclick="collToggle(this)"><span>Закрепить конфиг за пользователем</span>
             <span class="coll-hr"><svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></span>
         </button>
