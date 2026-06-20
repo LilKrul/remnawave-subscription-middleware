@@ -1359,6 +1359,7 @@ if(window.matchMedia){matchMedia('(prefers-color-scheme: dark)').addEventListene
                     if(!d||!d.ok){if(window.uiToast)uiToast('Не сохранено');if(changed&&snap.has(changed))setVal(changed,snap.get(changed));if(queued){queued=false;send(null);}return;}
                     if(window.uiToast)uiToast(d.msg||'Сохранено');
                     snapAll();
+                    if(changed&&changed.hasAttribute&&changed.hasAttribute('data-reload')){setTimeout(function(){location.reload();},450);return;}
                     if(queued){queued=false;send(null);}
                 })
                 .catch(function(){

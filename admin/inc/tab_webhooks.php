@@ -38,7 +38,7 @@ WEBHOOK_SECRET_HEADER=<?= h(webhook_secret() ?: '<секрет из «Подкл
             <input type="hidden" name="forward_targets_json" id="fwd_json" value="">
             <div class="set-row">
                 <div class="set-info"><div class="set-t">Включить пересылку</div><div class="set-d">Пересылать входящие вебхуки адресатам из списка ниже.</div></div>
-                <label class="switch"><input type="checkbox" name="forward_enabled" <?= forward_enabled()?'checked':'' ?>><span class="sl"></span></label>
+                <label class="switch"><input type="checkbox" name="forward_enabled" data-reload <?= forward_enabled()?'checked':'' ?>><span class="sl"></span></label>
             </div>
             <div class="set-row">
                 <div class="set-info"><div class="set-t">Таймаут на адрес, сек</div><div class="set-d">Сколько ждать ответа каждого адресата.</div></div>
