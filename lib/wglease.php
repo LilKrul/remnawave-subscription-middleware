@@ -251,6 +251,17 @@ function wglease_reset_auto() {
     } catch (Throwable $e) { return 0; }
 }
 
+function wglease_free($config_id) {
+    wglease_ensure();
+    $config_id = (int) $config_id;
+    if (!($p = db()) || $config_id <= 0) return 0;
+    try {
+        $st = $p->prepare('DELETE FROM wg_lease WHERE config_id = ? AND manual = 0');
+        $st->execute([$config_id]);
+        return (int) $st->rowCount();
+    } catch (Throwable $e) { return 0; }
+}
+
 function wglease_dupes() {
     wglease_ensure();
     if (!($p = db())) return [];

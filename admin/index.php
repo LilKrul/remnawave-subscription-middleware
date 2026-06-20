@@ -864,6 +864,12 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && is_auth()) {
         header('Location: index.php?tab=wg_pool'); exit();
     }
 
+    if ($action === 'pool_free_slot') {
+        $n = wglease_free((int) ($_POST['id'] ?? 0));
+        flash($n ? 'Слот освобождён' : 'Слот уже свободен (или ручная привязка)');
+        header('Location: index.php?tab=wg_pool'); exit();
+    }
+
     if ($action === 'toggle_squad_config') {
         squadconf_toggle((int) ($_POST['id'] ?? 0), ($_POST['enabled'] ?? '0') === '1');
         header('Location: index.php?tab=' . ((($_POST['ret'] ?? '') === 'wg_pool') ? 'wg_pool' : 'squad_configs')); exit();

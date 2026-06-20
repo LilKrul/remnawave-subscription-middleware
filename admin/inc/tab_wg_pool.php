@@ -251,6 +251,15 @@
                 <?php endif; ?>
                 </td>
                 <td style="text-align:right;white-space:nowrap">
+                    <?php if ($lz && (int) ($lz['manual'] ?? 0) === 0): ?>
+                    <form method="post" style="margin:0;display:inline" onsubmit="return uiConfirmForm(this,'Освободить слот? Текущая выдача снимется, конфиг станет свободным и уйдёт следующему совместимому устройству.')">
+                        <input type="hidden" name="csrf" value="<?= h($token) ?>">
+                        <input type="hidden" name="action" value="pool_free_slot">
+                        <input type="hidden" name="ret" value="wg_pool">
+                        <input type="hidden" name="id" value="<?= (int) $c['id'] ?>">
+                        <button type="submit" class="sqcfg-btn" title="Снять выдачу — конфиг станет свободным">✕ Слот</button>
+                    </form>
+                    <?php endif; ?>
                     <button type="button" class="sqcfg-btn sqcfg-edit" data-id="<?= (int) $c['id'] ?>">✎ Изменить</button>
                     <form method="post" style="margin:0;display:inline" onsubmit="return uiConfirmForm(this,'Удалить этот конфиг?')">
                         <input type="hidden" name="csrf" value="<?= h($token) ?>">
