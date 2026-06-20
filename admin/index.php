@@ -367,6 +367,13 @@ if (isset($_GET['ajax']) && is_auth()) {
         exit();
     }
 
+    if ($a === 'panelstats') {
+        $perr = '';
+        $age = !empty($_GET['force']) ? 0 : 45;
+        echo json_encode(['ok' => true, 'stats' => remnawave_system_stats($age, $perr)], JSON_UNESCAPED_UNICODE);
+        exit();
+    }
+
     if ($a === 'save_rules' && ($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
         if (!csrf_ok()) { http_response_code(400); echo json_encode(['ok' => false, 'error' => 'CSRF']); exit(); }
         rules_save_from_json($_POST['response_rules_json'] ?? '[]');

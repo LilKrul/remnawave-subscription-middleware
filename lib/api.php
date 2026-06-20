@@ -223,3 +223,57 @@ function remnawave_reset_traffic($uuid, &$error = '') {
     if (!$ok) { $error = $e ?: ('HTTP ' . $code); return false; }
     return true;
 }
+
+
+function remnawave_system_stats($maxAge = 45, &$error = '') {
+    $error = '';
+    $now = time();
+    if ($maxAge > 0) {
+        $ts = (int) setting('panelstats_ts', '0');
+        if ($ts > 0 && ($now - $ts) <= $maxAge) {
+            $c = json_decode((string) setting('panelstats_json', ''), true);
+            if (is_array($c)) { $c['cached'] = true; $c['age'] = $now - $ts; return $c; }
+        }
+    }
+    $out = [
+        'ok' => false, 'ts' => $now, 'cached' => false, 'age' => 0, 'error' => '',
+        'users'  => ['ACTIVE' => null, 'LIMITED' => null, 'EXPIRED' => null, 'DISABLED' => null, 'total' => null],
+        'online' => ['now' => null, 'day' => null, 'week' => null],
+        'nodes'  => ['online' => null, 'total' => null],
+    ];
+    [$ok, $code, $data, $e] = remnawave_api_get('/api/system/stats');
+    if (!$ok) { $error = $e ?: ('HTTP ' . $code); $out['error'] = $error; return $out; }
+    $resp = $data['response'] ?? $data;
+    $sc = $resp['users']['statusCounts'] ?? ($resp['statusCounts'] ?? null);
+    if (is_array($sc)) foreach (['ACTIVE', 'LIMITED', 'EXPIRED', 'DISABLED'] as $k) if (isset($sc[$k])) $out['users'][$k] = (int) $sc[$k];
+    $tot = $resp['users']['totalUsers'] ?? ($resp['totalUsers'] ?? null);
+    if ($tot !== null) $out['users']['total'] = (int) $tot;
+    elseif (is_array($sc)) { $s2 = 0; foreach ($sc as $v) $s2 += (int) $v; $out['users']['total'] = $s2; }
+    $os = $resp['onlineStats'] ?? ($resp['users']['onlineStats'] ?? ($resp['stats']['onlineStats'] ?? null));
+    if (is_array($os)) {
+        if (isset($os['onlineNow'])) $out['online']['now'] = (int) $os['onlineNow'];
+        if (isset($os['lastDay']))   $out['online']['day']  = (int) $os['lastDay'];
+        if (isset($os['lastWeek']))  $out['online']['week'] = (int) $os['lastWeek'];
+    }
+    $no = $resp['nodes']['totalOnline'] ?? ($resp['nodesOnline'] ?? null);
+    if ($no !== null) $out['nodes']['online'] = (int) $no;
+    $out['ok'] = true;
+    [$nok, , $nd, ] = remnawave_api_get('/api/nodes');
+    if ($nok) {
+        $nr = $nd['response'] ?? $nd;
+        $list = is_array($nr) ? ($nr['nodes'] ?? (isset($nr[0]) ? $nr : [])) : [];
+        if (is_array($list) && $list) {
+            $out['nodes']['total'] = count($list);
+            $on = 0; $flag = false;
+            foreach ($list as $n) {
+                if (!is_array($n)) continue;
+                if (array_key_exists('isConnected', $n)) { $flag = true; if (!empty($n['isConnected'])) $on++; }
+                elseif (array_key_exists('isNodeOnline', $n)) { $flag = true; if (!empty($n['isNodeOnline'])) $on++; }
+            }
+            if ($flag) $out['nodes']['online'] = $on;
+        }
+    }
+    set_setting('panelstats_json', json_encode($out, JSON_UNESCAPED_UNICODE));
+    set_setting('panelstats_ts', (string) $now);
+    return $out;
+}
