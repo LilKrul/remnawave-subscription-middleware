@@ -174,8 +174,8 @@ function wglease_assign($p, $pool_id, $lease_key, $short_uuid, $hwid, array $can
     if (!$cand_ids) return null;
     try {
         $in = implode(',', array_fill(0, count($cand_ids), '?'));
-        $st = $p->prepare("SELECT config_id FROM wg_lease WHERE pool_id = ? AND config_id IN ($in)");
-        $st->execute(array_merge([$pool_id], $cand_ids));
+        $st = $p->prepare("SELECT config_id FROM wg_lease WHERE config_id IN ($in)");
+        $st->execute($cand_ids);
         $taken = [];
         foreach ($st->fetchAll() as $r) $taken[(int) $r['config_id']] = true;
     } catch (Throwable $e) { $taken = []; }
@@ -223,7 +223,7 @@ function wglease_manual_add($config_id, $short_uuid, $hwid = '') {
     $now = time();
     try {
         $p->prepare('DELETE FROM wg_lease WHERE lease_key = ?')->execute([$key]);
-        $p->prepare('DELETE FROM wg_lease WHERE pool_id = ? AND config_id = ?')->execute([$pool, $config_id]);
+        $p->prepare('DELETE FROM wg_lease WHERE config_id = ?')->execute([$config_id]);
         $ins = $p->prepare('INSERT INTO wg_lease (pool_id, lease_key, config_id, short_uuid, hwid, manual, created_ts, seen_ts) VALUES (?, ?, ?, ?, ?, 1, ?, ?)');
         $ins->execute([$pool, $key, $config_id, $short_uuid, ($hwid !== '' ? $hwid : null), $now, $now]);
         return [true, ''];

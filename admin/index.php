@@ -1016,7 +1016,7 @@ if ($tab === 'subst' && remnawave_url() !== '' && remnawave_token() !== '') {
 
 $sqcfg_squads = []; $sqcfg_squads_err = ''; $sqcfg_names = [];
 $sqcfg_simple = []; $sqcfg_wg = [];
-$sqcfg_modes = []; $sqcfg_stock = []; $sqcfg_leases = []; $sqcfg_reclaim_days = 14; $sqcfg_sizing = ['rows' => [], 'ts' => 0];
+$sqcfg_modes = []; $sqcfg_stock = []; $sqcfg_free = []; $sqcfg_leases = []; $sqcfg_lease_by_cfg = []; $sqcfg_reclaim_days = 14; $sqcfg_sizing = ['rows' => [], 'ts' => 0];
 if ($tab === 'squad_configs' || $tab === 'wg_pool') {
     if (remnawave_url() !== '' && remnawave_token() !== '') $sqcfg_squads = remnawave_internal_squads($sqcfg_squads_err);
     foreach ($sqcfg_squads as $s) $sqcfg_names[$s['uuid']] = $s['name'];
@@ -1030,9 +1030,14 @@ if ($tab === 'squad_configs' || $tab === 'wg_pool') {
 if ($tab === 'wg_pool') {
     $sqcfg_reclaim_days = wglease_reclaim_days();
     foreach ($sqcfg_squads as $s) $sqcfg_modes[$s['uuid']] = wglease_mode($s['uuid']);
+    foreach ($sqcfg_leases as $l) $sqcfg_lease_by_cfg[(int) $l['config_id']] = $l;
     foreach ($sqcfg_wg as $c) {
         if ((int) $c['enabled'] !== 1) continue;
-        foreach (squadconf_squads_of($c) as $sq) $sqcfg_stock[$sq] = ($sqcfg_stock[$sq] ?? 0) + 1;
+        $leased = isset($sqcfg_lease_by_cfg[(int) $c['id']]);
+        foreach (squadconf_squads_of($c) as $sq) {
+            $sqcfg_stock[$sq] = ($sqcfg_stock[$sq] ?? 0) + 1;
+            if (!$leased) $sqcfg_free[$sq] = ($sqcfg_free[$sq] ?? 0) + 1;
+        }
     }
     $sqcfg_sizing = wglease_sizing_cached();
 }

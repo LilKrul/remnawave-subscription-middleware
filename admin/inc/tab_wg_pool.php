@@ -81,7 +81,7 @@
                 <input type="hidden" name="csrf" value="<?= h($token) ?>">
                 <input type="hidden" name="action" value="save_pool_modes">
                 <table class="logtbl wgpool-tbl">
-                    <thead><tr><th>Сквад</th><th>Режим</th><th>В пуле</th><th>Учёток: актив. / всего</th><th>Добавлено (факт)</th></tr></thead>
+                    <thead><tr><th>Сквад</th><th>Режим</th><th>В пуле (своб/всего)</th><th>Учёток: актив. / всего</th><th>Добавлено (факт)</th></tr></thead>
                     <tbody>
                     <?php foreach ($sqcfg_squads as $s): $pu = $s['uuid']; $pm = $sqcfg_modes[$pu] ?? 'shared'; ?>
                         <tr>
@@ -93,7 +93,7 @@
                                     <option value="devices"<?= $pm === 'devices' ? ' selected' : '' ?>>На устройство</option>
                                 </select>
                             </td>
-                            <td><?= (int) ($sqcfg_stock[$pu] ?? 0) ?></td>
+                            <td><b><?= (int) ($sqcfg_free[$pu] ?? 0) ?></b> / <?= (int) ($sqcfg_stock[$pu] ?? 0) ?></td>
                             <td class="wgp-u" data-su="<?= h($pu) ?>">—</td>
                             <td class="wgp-d" data-su="<?= h($pu) ?>">—</td>
                         </tr>
@@ -108,7 +108,7 @@
                 </div>
                 <div id="wgpCalcMsg" class="muted" style="font-size:.8rem;margin-top:.5rem"></div>
                 <div class="muted" style="font-size:.78rem;line-height:1.6;margin-top:.7rem">
-                    <b>В пуле</b> — WG/AWG-конфигов (слотов). <b>Учёток</b> — пользователей сквада: активных / всего. <b>Добавлено (факт)</b> — реально зарегистрировано устройств юзерами сквада, из базы hwid. Красным, если конфигов меньше факта.
+                    <b>В пуле</b> — свободных / всего WG/AWG-конфигов (слотов); выданные устройствам вычитаются из «свободных». <b>Учёток</b> — пользователей сквада: активных / всего. <b>Добавлено (факт)</b> — реально зарегистрировано устройств юзерами сквада, из базы hwid. Красным, если конфигов меньше факта.
                 </div>
             </form>
             <?php endif; ?>
@@ -210,7 +210,7 @@
             <input type="hidden" name="ids" id="wgBulkIds">
         </form>
         <table class="logtbl" id="wgTbl">
-            <thead><tr><th style="width:1%"><input type="checkbox" id="wgChkAll" aria-label="Выбрать все"></th><th>Сквады</th><th>Тип</th><th>Метка</th><th>Статус</th><th></th></tr></thead>
+            <thead><tr><th style="width:1%"><input type="checkbox" id="wgChkAll" aria-label="Выбрать все"></th><th>Сквады</th><th>Тип</th><th>Метка</th><th>Статус</th><th>Выдан</th><th></th></tr></thead>
             <tbody>
             <?php foreach ($sqcfg_wg as $c):
                 $pn = json_decode((string) ($c['parsed'] ?? ''), true);
@@ -218,6 +218,7 @@
                 $csquads = squadconf_squads_of($c);
                 $on = (int) $c['enabled'] === 1;
                 $sqcfg_edit[(int) $c['id']] = ['squads' => array_values($csquads), 'name' => (string) ($c['name'] ?? ''), 'raw' => (string) $c['raw']];
+                $lz = $sqcfg_lease_by_cfg[(int) $c['id']] ?? null;
             ?>
             <tr>
                 <td><input type="checkbox" class="wg-chk" value="<?= (int) $c['id'] ?>"></td>
@@ -233,6 +234,16 @@
                         <input type="hidden" name="enabled" value="<?= $on ? '0' : '1' ?>">
                         <button type="submit" class="sqcfg-btn <?= $on ? '' : 'off' ?>"><?= $on ? '✅ Включён' : '⛔ Выключен' ?></button>
                     </form>
+                </td>
+                <td>
+                <?php if ($lz): $lwho = trim((string) ($lz['short_uuid'] ?? '')); ?>
+                    <span class="tag ok">выдан</span>
+                    <?php if ($lwho !== ''): ?><span style="font-family:monospace;font-size:.74rem"><?= h($lwho) ?></span><?php endif; ?>
+                    <?php if (!empty($lz['hwid'])): ?><span class="muted" style="font-size:.72rem">📱 <?= h(mb_substr((string) $lz['hwid'], 0, 10)) ?></span><?php else: ?><span class="muted" style="font-size:.72rem">на польз.</span><?php endif; ?>
+                    <?php if ((int) ($lz['manual'] ?? 0) === 1): ?><span class="muted" title="ручная привязка">🔧</span><?php endif; ?>
+                <?php else: ?>
+                    <span class="muted">свободен</span>
+                <?php endif; ?>
                 </td>
                 <td style="text-align:right;white-space:nowrap">
                     <button type="button" class="sqcfg-btn sqcfg-edit" data-id="<?= (int) $c['id'] ?>">✎ Изменить</button>
