@@ -10,6 +10,45 @@ if (($sqcfg_sizing['rows'] ?? []) && $wgp_ts > 0) {
     $wgp_msg0 = 'Последний расчёт: ' . $ago . '. ' . $wgp_hint;
 }
 ?>
+    <style>
+        .wg-up-grid{display:grid;grid-template-columns:1fr 1fr;gap:1rem;align-items:start}
+        .mc-grid{display:grid;grid-template-columns:1fr 1fr;gap:1rem;align-items:start}
+        @media(max-width:720px){.wg-up-grid,.mc-grid{grid-template-columns:1fr}}
+        .file-btn{display:inline-flex;align-items:center;gap:.5rem;border:1px solid var(--line);background:var(--bg2);color:var(--text);border-radius:9px;padding:.6rem .95rem;font-size:.86rem;font-weight:600;cursor:pointer;transition:border-color .15s,background .15s}
+        .file-btn:hover{border-color:var(--accent);background:var(--accent-light)}
+        .file-btn svg{color:var(--accent-text)}
+        .sqcfg-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:.7rem 1rem;align-items:end}
+        .sqcfg-grid select,.sqcfg-grid input{width:100%;box-sizing:border-box}
+        .sqcfg-grid label{display:block;margin-bottom:.3rem;font-weight:600;font-size:.82rem}
+        .sqcfg-sel{appearance:none;-webkit-appearance:none;-moz-appearance:none;padding-right:2.2rem;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right .75rem center;background-size:.95rem}
+        #sqEditModal label:not(.sq-item){display:block;margin-bottom:.3rem;font-weight:600;font-size:.82rem}
+        .card label{display:block;margin-bottom:.35rem;font-weight:600;font-size:.85rem}
+        .sq-tag{display:inline-block;background:var(--bg2);border:1px solid var(--line);border-radius:6px;padding:.08rem .45rem;font-size:.74rem;margin:.1rem .25rem .1rem 0;white-space:nowrap}
+        .wgpool-tbl td,.wgpool-tbl th{vertical-align:middle}
+        .wgpool-tbl .sqcfg-sel{padding:.3rem 2rem .3rem .6rem;font-size:.82rem}
+        .wgp-warn{color:var(--c-warn-fg);font-weight:700}
+        .sq-manual{padding-top:.4rem;padding-bottom:.4rem}
+        .sq-manual .sq-mtxt{display:flex;flex-direction:column;justify-content:center;gap:.05rem;flex:1;min-width:0}
+        .sq-manual .sq-n{flex:none;line-height:1.15;font-size:.86rem}
+        .wg-bulkbar{display:flex;align-items:center;gap:.75rem;margin:0 0 .8rem;flex-wrap:wrap}
+        .wg-leasebar{display:flex;align-items:center;gap:.75rem;margin:0 0 .7rem;flex-wrap:wrap}
+        .wg-editbar{margin:0 0 .8rem}
+        .wg-editbar .we-lbl{font-size:.82rem;margin-bottom:.4rem}
+        .wg-editbar .we-grid{display:grid;grid-template-columns:minmax(150px,240px) 1fr;gap:.6rem;align-items:center}
+        .wg-editbar .we-grid select,.wg-editbar .we-grid input{width:100%;box-sizing:border-box;margin:0}
+        .wg-editbar .we-btns{display:flex;justify-content:flex-end;gap:.5rem;margin-top:.5rem}
+        .wg-dupe-warn{color:var(--red);font-weight:600;font-size:.82rem}
+        #wgTbl td:first-child,#wgTbl th:first-child{text-align:center}
+        .osico{display:inline-block;width:15px;height:15px;vertical-align:-2px;background:var(--text-strong);-webkit-mask-repeat:no-repeat;mask-repeat:no-repeat;-webkit-mask-position:center;mask-position:center;-webkit-mask-size:contain;mask-size:contain}
+        .wg-issued-dev{display:inline-flex;align-items:center;gap:3px;opacity:.85}
+        .wg-issued-name{font-weight:600}
+        .wg-tip{position:relative;cursor:help}
+        .wg-tip:hover::after{content:attr(data-tip);position:absolute;left:0;bottom:145%;white-space:pre-line;text-align:left;min-width:210px;max-width:340px;background:var(--card);color:var(--text);border:1px solid var(--line);border-radius:9px;padding:.55rem .75rem;font-size:.76rem;font-weight:500;line-height:1.55;box-shadow:var(--shadow);z-index:30}
+        #wgTbl td:nth-child(6),#wgTbl th:nth-child(6){min-width:210px}
+        .wg-issued{display:inline-flex;align-items:baseline;gap:.3rem;max-width:210px;vertical-align:bottom}
+        .wg-issued>.wg-tip{display:inline-flex;align-items:baseline;gap:.3rem;min-width:0;max-width:100%}
+        .wg-issued-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+    </style>
     <section class="<?= coll_cls('wgpool_help') ?>" data-coll="wgpool_help">
         <button type="button" class="coll-head" onclick="collToggle(this)"><span>Как работает пул и почему так</span>
             <span class="coll-hr"><svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></span>
@@ -354,45 +393,6 @@ if (($sqcfg_sizing['rows'] ?? []) && $wgp_ts > 0) {
         </div>
     </div>
 
-    <style>
-        .wg-up-grid{display:grid;grid-template-columns:1fr 1fr;gap:1rem;align-items:start}
-        .mc-grid{display:grid;grid-template-columns:1fr 1fr;gap:1rem;align-items:start}
-        @media(max-width:720px){.wg-up-grid,.mc-grid{grid-template-columns:1fr}}
-        .file-btn{display:inline-flex;align-items:center;gap:.5rem;border:1px solid var(--line);background:var(--bg2);color:var(--text);border-radius:9px;padding:.6rem .95rem;font-size:.86rem;font-weight:600;cursor:pointer;transition:border-color .15s,background .15s}
-        .file-btn:hover{border-color:var(--accent);background:var(--accent-light)}
-        .file-btn svg{color:var(--accent-text)}
-        .sqcfg-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:.7rem 1rem;align-items:end}
-        .sqcfg-grid select,.sqcfg-grid input{width:100%;box-sizing:border-box}
-        .sqcfg-grid label{display:block;margin-bottom:.3rem;font-weight:600;font-size:.82rem}
-        .sqcfg-sel{appearance:none;-webkit-appearance:none;-moz-appearance:none;padding-right:2.2rem;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right .75rem center;background-size:.95rem}
-        #sqEditModal label:not(.sq-item){display:block;margin-bottom:.3rem;font-weight:600;font-size:.82rem}
-        .card label{display:block;margin-bottom:.35rem;font-weight:600;font-size:.85rem}
-        .sq-tag{display:inline-block;background:var(--bg2);border:1px solid var(--line);border-radius:6px;padding:.08rem .45rem;font-size:.74rem;margin:.1rem .25rem .1rem 0;white-space:nowrap}
-        .wgpool-tbl td,.wgpool-tbl th{vertical-align:middle}
-        .wgpool-tbl .sqcfg-sel{padding:.3rem 2rem .3rem .6rem;font-size:.82rem}
-        .wgp-warn{color:var(--c-warn-fg);font-weight:700}
-        .sq-manual{padding-top:.4rem;padding-bottom:.4rem}
-        .sq-manual .sq-mtxt{display:flex;flex-direction:column;justify-content:center;gap:.05rem;flex:1;min-width:0}
-        .sq-manual .sq-n{flex:none;line-height:1.15;font-size:.86rem}
-        .wg-bulkbar{display:flex;align-items:center;gap:.75rem;margin:0 0 .8rem;flex-wrap:wrap}
-        .wg-leasebar{display:flex;align-items:center;gap:.75rem;margin:0 0 .7rem;flex-wrap:wrap}
-        .wg-editbar{margin:0 0 .8rem}
-        .wg-editbar .we-lbl{font-size:.82rem;margin-bottom:.4rem}
-        .wg-editbar .we-grid{display:grid;grid-template-columns:minmax(150px,240px) 1fr;gap:.6rem;align-items:center}
-        .wg-editbar .we-grid select,.wg-editbar .we-grid input{width:100%;box-sizing:border-box;margin:0}
-        .wg-editbar .we-btns{display:flex;justify-content:flex-end;gap:.5rem;margin-top:.5rem}
-        .wg-dupe-warn{color:var(--red);font-weight:600;font-size:.82rem}
-        #wgTbl td:first-child,#wgTbl th:first-child{text-align:center}
-        .osico{display:inline-block;width:15px;height:15px;vertical-align:-2px;background:var(--text-strong);-webkit-mask-repeat:no-repeat;mask-repeat:no-repeat;-webkit-mask-position:center;mask-position:center;-webkit-mask-size:contain;mask-size:contain}
-        .wg-issued-dev{display:inline-flex;align-items:center;gap:3px;opacity:.85}
-        .wg-issued-name{font-weight:600}
-        .wg-tip{position:relative;cursor:help}
-        .wg-tip:hover::after{content:attr(data-tip);position:absolute;left:0;bottom:145%;white-space:pre-line;text-align:left;min-width:210px;max-width:340px;background:var(--card);color:var(--text);border:1px solid var(--line);border-radius:9px;padding:.55rem .75rem;font-size:.76rem;font-weight:500;line-height:1.55;box-shadow:var(--shadow);z-index:30}
-        #wgTbl td:nth-child(6),#wgTbl th:nth-child(6){min-width:210px}
-        .wg-issued{display:inline-flex;align-items:baseline;gap:.3rem;max-width:210px;vertical-align:bottom}
-        .wg-issued>.wg-tip{display:inline-flex;align-items:baseline;gap:.3rem;min-width:0;max-width:100%}
-        .wg-issued-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
-    </style>
     <?php include __DIR__ . '/_sqcfg_js.php'; ?>
     <script>
     window.SQCFG = <?= json_encode($sqcfg_edit ?? [], JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
