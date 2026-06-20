@@ -791,6 +791,16 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && is_auth()) {
                 $items[] = [trim((string) $lbl), $raw];
             }
         }
+        $fj = json_decode((string) ($_POST['files_json'] ?? ''), true);
+        if (is_array($fj)) {
+            foreach ($fj as $f) {
+                if (!is_array($f)) continue;
+                $raw = (string) ($f['c'] ?? '');
+                if (trim($raw) === '') continue;
+                $lbl = preg_replace('/\.[A-Za-z0-9]+$/', '', (string) ($f['n'] ?? ''));
+                $items[] = [trim((string) $lbl), $raw];
+            }
+        }
         $rawb = (string) ($_POST['raw_batch'] ?? '');
         if (trim($rawb) !== '') {
             foreach (preg_split('/(?=\[Interface\])/i', $rawb) as $blk) {
@@ -838,6 +848,14 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && is_auth()) {
         squadconf_delete((int) ($_POST['id'] ?? 0));
         flash('Конфиг удалён');
         header('Location: index.php?tab=' . ((($_POST['ret'] ?? '') === 'wg_pool') ? 'wg_pool' : 'squad_configs')); exit();
+    }
+
+    if ($action === 'del_squad_configs') {
+        $ids = array_values(array_filter(array_map('intval', explode(',', (string) ($_POST['ids'] ?? ''))), fn($i) => $i > 0));
+        $n = 0;
+        foreach ($ids as $id) { squadconf_delete($id); $n++; }
+        flash($n ? ('Удалено конфигов: ' . $n) : 'Ничего не выбрано');
+        header('Location: index.php?tab=' . ((($_POST['ret'] ?? '') === 'squad_configs') ? 'squad_configs' : 'wg_pool')); exit();
     }
 
     if ($action === 'toggle_squad_config') {

@@ -24,10 +24,11 @@
             <?php elseif (!$sqcfg_squads): ?>
                 <div class="warn">Внутренние сквады не получены. Настройте подключение к панели.</div>
             <?php endif; ?>
-            <p class="muted" style="margin-top:0">Пакетно: выбери <code>.conf</code>-файлы (метка из имени файла) и/или вставь несколько конфигов подряд — режутся по секции <code>[Interface]</code>. Тип определяется автоматически; <b>битые и не-WG/AWG молча пропускаются</b> — после загрузки покажу, сколько добавлено и сколько пропущено.</p>
-            <form method="post" enctype="multipart/form-data" autocomplete="off">
+            <p class="muted" style="margin-top:0">Пакетно: выбери <code>.conf</code>-файлы (метка из имени файла) и/или вставь несколько конфигов подряд — режутся по секции <code>[Interface]</code>. Тип определяется автоматически; <b>битые и не-WG/AWG молча пропускаются</b> — после загрузки покажу, сколько добавлено и сколько пропущено. <b>До 200 файлов за раз</b> — они читаются прямо в браузере, серверный лимит на число файлов не мешает.</p>
+            <form method="post" enctype="multipart/form-data" autocomplete="off" id="wgUpForm">
                 <input type="hidden" name="csrf" value="<?= h($token) ?>">
                 <input type="hidden" name="action" value="batch_wg_config">
+                <input type="hidden" name="files_json" id="wgFilesJson">
                 <label>Куда <span class="muted" style="font-weight:400">— сквады (пул) или ручная привязка</span></label>
                 <div class="sq-grid">
                     <label class="sq-item sq-manual"><input type="checkbox" name="squads[]" value="__manual__" checked><span class="sq-mtxt"><span class="sq-n">🔧 Ручная привязка</span><span class="muted" style="font-size:.72rem">в обход сквадов</span></span></label>
@@ -196,8 +197,20 @@
         <?php if (!$sqcfg_wg): ?>
             <p class="muted">Пока пусто. Загрузите WG/AWG-конфиги выше.</p>
         <?php else: $sqcfg_edit = []; ?>
+        <div class="wg-bulkbar">
+            <span id="wgChkCount" class="muted">Выбрано: 0</span>
+            <span style="flex:1"></span>
+            <button type="button" id="wgDelSel" class="danger" disabled>🗑 Удалить выбранные</button>
+            <button type="button" id="wgDelAll" class="danger">🗑 Удалить все</button>
+        </div>
+        <form method="post" id="wgBulkForm" style="display:none">
+            <input type="hidden" name="csrf" value="<?= h($token) ?>">
+            <input type="hidden" name="action" value="del_squad_configs">
+            <input type="hidden" name="ret" value="wg_pool">
+            <input type="hidden" name="ids" id="wgBulkIds">
+        </form>
         <table class="logtbl" id="wgTbl">
-            <thead><tr><th>Сквады</th><th>Тип</th><th>Метка</th><th>Статус</th><th></th></tr></thead>
+            <thead><tr><th style="width:1%"><input type="checkbox" id="wgChkAll" aria-label="Выбрать все"></th><th>Сквады</th><th>Тип</th><th>Метка</th><th>Статус</th><th></th></tr></thead>
             <tbody>
             <?php foreach ($sqcfg_wg as $c):
                 $pn = json_decode((string) ($c['parsed'] ?? ''), true);
@@ -207,6 +220,7 @@
                 $sqcfg_edit[(int) $c['id']] = ['squads' => array_values($csquads), 'name' => (string) ($c['name'] ?? ''), 'raw' => (string) $c['raw']];
             ?>
             <tr>
+                <td><input type="checkbox" class="wg-chk" value="<?= (int) $c['id'] ?>"></td>
                 <td><?php foreach ($csquads as $sq): ?><span class="sq-tag"><?= h($sqcfg_names[$sq] ?? $sq) ?></span><?php endforeach; ?></td>
                 <td><span class="tag normal"><?= h($sumr) ?></span></td>
                 <td><?= $c['name'] !== null && $c['name'] !== '' ? h($c['name']) : '<span class="muted">—</span>' ?></td>
@@ -299,6 +313,8 @@
         .sq-manual{padding-top:.4rem;padding-bottom:.4rem}
         .sq-manual .sq-mtxt{display:flex;flex-direction:column;justify-content:center;gap:.05rem;flex:1;min-width:0}
         .sq-manual .sq-n{flex:none;line-height:1.15;font-size:.86rem}
+        .wg-bulkbar{display:flex;align-items:center;gap:.75rem;margin:0 0 .8rem;flex-wrap:wrap}
+        #wgTbl td:first-child,#wgTbl th:first-child{text-align:center}
     </style>
     <?php include __DIR__ . '/_sqcfg_js.php'; ?>
     <script>
@@ -306,6 +322,37 @@
     sqcfgInitEdit();
     sqcfgInitPager('wgTbl', 'wgPager', 'wgSize', 'wgpool_size');
     sqcfgInitFileBtn('wgFiles', 'wgFilesInfo');
+    (function(){
+        var form = document.getElementById('wgUpForm'), inp = document.getElementById('wgFiles'), hid = document.getElementById('wgFilesJson');
+        if (!form || !inp || !hid) return;
+        var done = false;
+        form.addEventListener('submit', function(e){
+            if (done) return;
+            if (!inp.files || !inp.files.length) return;
+            e.preventDefault();
+            var files = Array.prototype.slice.call(inp.files), out = [], left = files.length;
+            files.forEach(function(f){
+                var fr = new FileReader();
+                fr.onload = function(){ out.push({n: f.name, c: String(fr.result)}); if (--left === 0) fin(); };
+                fr.onerror = function(){ if (--left === 0) fin(); };
+                fr.readAsText(f);
+            });
+            function fin(){ hid.value = JSON.stringify(out); inp.disabled = true; done = true; form.submit(); }
+        });
+    })();
+    (function(){
+        var all = document.getElementById('wgChkAll'), selBtn = document.getElementById('wgDelSel'), allBtn = document.getElementById('wgDelAll');
+        var cnt = document.getElementById('wgChkCount'), form = document.getElementById('wgBulkForm'), idsInp = document.getElementById('wgBulkIds');
+        if (!form) return;
+        function chks(){ return Array.prototype.slice.call(document.querySelectorAll('.wg-chk')); }
+        function upd(){ var a = chks(), n = a.filter(function(c){ return c.checked; }).length; if (cnt) cnt.textContent = 'Выбрано: ' + n; if (selBtn) selBtn.disabled = n === 0; if (all){ all.checked = n > 0 && n === a.length; all.indeterminate = n > 0 && n < a.length; } }
+        if (all) all.addEventListener('change', function(){ var c = all.checked; chks().forEach(function(x){ x.checked = c; }); upd(); });
+        document.addEventListener('change', function(e){ if (e.target && e.target.classList && e.target.classList.contains('wg-chk')) upd(); });
+        function go(ids, msg){ if (!ids.length) return; uiConfirm(msg, function(){ idsInp.value = ids.join(','); form.submit(); }, 'Удалить', true); }
+        if (selBtn) selBtn.addEventListener('click', function(){ var ids = chks().filter(function(c){ return c.checked; }).map(function(c){ return c.value; }); go(ids, 'Удалить выбранные конфиги: ' + ids.length + '?'); });
+        if (allBtn) allBtn.addEventListener('click', function(){ var ids = chks().map(function(c){ return c.value; }); go(ids, 'Удалить ВСЕ ' + ids.length + ' конфигов из пула? Отменить нельзя.'); });
+        upd();
+    })();
     (function(){
         var NAMES = <?= json_encode($sqcfg_names, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
         var SIZING = <?= json_encode($sqcfg_sizing['rows'] ?? [], JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
