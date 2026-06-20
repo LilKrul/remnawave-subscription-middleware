@@ -20,7 +20,6 @@
                 <div class="set-info"><div class="set-t">Инжект для xray-json</div><div class="set-d">Вливать WG/VLESS-конфиги сквада в подписки формата xray-json (напр. Happ). По умолчанию выкл. base64 / Clash / sing-box работают всегда при наличии конфигов. AmneziaWG в xray-json не вливается — ядро не умеет обфускацию.</div></div>
                 <label class="switch"><input type="checkbox" name="squad_xray_json_inject" <?= squadconf_xray_json_enabled() ? 'checked' : '' ?>><span class="sl"></span></label>
             </div>
-            <div style="margin-top:1rem"><button type="submit">💾 Сохранить</button></div>
         </form>
     </div>
 
