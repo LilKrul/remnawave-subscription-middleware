@@ -75,7 +75,7 @@ function wglease_set_mode($squad_uuid, $mode) {
 
 function wglease_reclaim_days() { return max(1, (int) (setting('wgpool_reclaim_days', '14') ?: 14)); }
 
-function wglease_select($short_uuid, $hwid, array $u_squads) {
+function wglease_select($short_uuid, $hwid, array $u_squads, $types = null) {
     $short_uuid = (string) $short_uuid;
     $hwid = (string) $hwid;
     if (!$u_squads) return [];
@@ -104,6 +104,7 @@ function wglease_select($short_uuid, $hwid, array $u_squads) {
             if (isset($added[$id])) continue;
             $t = (string) ($c['type'] ?? '');
             if ($t === 'vless') { $added[$id] = true; $out[] = $c; continue; }
+            if ($types !== null && !in_array($t, $types, true)) continue;
             $by_type[$t][] = $c;
         }
         if (!$by_type) continue;

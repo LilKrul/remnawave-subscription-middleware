@@ -217,7 +217,7 @@ if ($do_substitute) {
 if ($decision === 'normal' && $short_uuid !== '' && squadconf_any()) {
     $u_squads = squadconf_user_squads($short_uuid);
     if ($u_squads) {
-        $u_cfgs = wglease_select($short_uuid, $current_hwid, $u_squads);
+        $u_cfgs = wglease_select($short_uuid, $current_hwid, $u_squads, squadconf_supported_types($response, $format));
         if ($u_cfgs) $response = squadconf_inject($response, $format, $u_cfgs);
     }
 }

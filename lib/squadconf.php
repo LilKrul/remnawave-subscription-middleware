@@ -524,6 +524,15 @@ function squadconf_inject_singbox($body, array $configs) {
 
 function squadconf_xray_json_enabled() { return setting('squad_xray_json_inject', '0') === '1'; }
 
+function squadconf_supported_types($body, $format) {
+    if ($format === 'clash') return ['wireguard', 'amneziawg', 'vless'];
+    $trim = ltrim((string) $body);
+    if ($trim === '' || ($trim[0] !== '[' && $trim[0] !== '{')) return ['wireguard', 'amneziawg', 'vless'];
+    $obj = json_decode((string) $body, true);
+    if (squadconf_is_singbox($obj)) return ['wireguard', 'vless'];
+    return ['wireguard', 'vless'];
+}
+
 function squadconf_inject($body, $format, array $configs) {
     if (!$configs) return $body;
     try {
