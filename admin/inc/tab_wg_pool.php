@@ -218,17 +218,20 @@
             <input type="hidden" name="ids" id="wgBulkIds">
         </form>
         <div class="wg-editbar">
-            <span class="muted">Массово изменить:</span>
-            <select id="wgEditParam" class="sqcfg-sel">
-                <option value="mtu">MTU</option>
-                <option value="keepalive">PersistentKeepalive</option>
-                <option value="dns">DNS</option>
-                <option value="allowedips">AllowedIPs</option>
-            </select>
-            <span class="muted">=</span>
-            <input type="text" id="wgEditValue" class="we-val" placeholder="значение (пусто — убрать поле)">
-            <button type="button" id="wgEditSel" class="sqcfg-btn" disabled>К выбранным</button>
-            <button type="button" id="wgEditAll" class="sqcfg-btn">Ко всем</button>
+            <div class="we-lbl muted">Массово изменить параметр:</div>
+            <div class="we-grid">
+                <select id="wgEditParam" class="sqcfg-sel">
+                    <option value="mtu">MTU</option>
+                    <option value="keepalive">PersistentKeepalive</option>
+                    <option value="dns">DNS</option>
+                    <option value="allowedips">AllowedIPs</option>
+                </select>
+                <input type="text" id="wgEditValue" placeholder="значение (пусто — убрать поле)">
+            </div>
+            <div class="we-btns">
+                <button type="button" id="wgEditSel" class="sqcfg-btn" disabled>К выбранным</button>
+                <button type="button" id="wgEditAll" class="sqcfg-btn">Ко всем</button>
+            </div>
         </div>
         <form method="post" id="wgEditForm" style="display:none">
             <input type="hidden" name="csrf" value="<?= h($token) ?>">
@@ -361,8 +364,11 @@
         .sq-manual .sq-n{flex:none;line-height:1.15;font-size:.86rem}
         .wg-bulkbar{display:flex;align-items:center;gap:.75rem;margin:0 0 .8rem;flex-wrap:wrap}
         .wg-leasebar{display:flex;align-items:center;gap:.75rem;margin:0 0 .7rem;flex-wrap:wrap}
-        .wg-editbar{display:flex;align-items:center;gap:.5rem;margin:0 0 .8rem;flex-wrap:wrap}
-        .wg-editbar .we-val{flex:1 1 180px;min-width:140px;box-sizing:border-box}
+        .wg-editbar{margin:0 0 .8rem}
+        .wg-editbar .we-lbl{font-size:.82rem;margin-bottom:.4rem}
+        .wg-editbar .we-grid{display:grid;grid-template-columns:minmax(150px,240px) 1fr;gap:.6rem;align-items:center}
+        .wg-editbar .we-grid select,.wg-editbar .we-grid input{width:100%;box-sizing:border-box;margin:0}
+        .wg-editbar .we-btns{display:flex;justify-content:flex-end;gap:.5rem;margin-top:.5rem}
         .wg-dupe-warn{color:var(--red);font-weight:600;font-size:.82rem}
         #wgTbl td:first-child,#wgTbl th:first-child{text-align:center}
         .osico{display:inline-block;width:15px;height:15px;vertical-align:-2px;background:var(--text-strong);-webkit-mask-repeat:no-repeat;mask-repeat:no-repeat;-webkit-mask-position:center;mask-position:center;-webkit-mask-size:contain;mask-size:contain}
