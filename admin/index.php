@@ -890,6 +890,12 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && is_auth()) {
         flash('Настройки слияния подписок сохранены');
         form_saved('addsub');
     }
+
+    if ($action === 'save_sqcfg_settings') {
+        set_setting('squad_xray_json_inject', isset($_POST['squad_xray_json_inject']) ? '1' : '0');
+        flash('Настройки доп-конфигов сохранены');
+        form_saved('squad_configs');
+    }
 }
 
 $tab   = $_GET['tab'] ?? 'users';

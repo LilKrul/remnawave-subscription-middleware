@@ -522,6 +522,8 @@ function squadconf_inject_singbox($body, array $configs) {
     return $enc === false ? $body : $enc;
 }
 
+function squadconf_xray_json_enabled() { return setting('squad_xray_json_inject', '0') === '1'; }
+
 function squadconf_inject($body, $format, array $configs) {
     if (!$configs) return $body;
     try {
@@ -530,7 +532,7 @@ function squadconf_inject($body, $format, array $configs) {
         if ($trim === '' || ($trim[0] !== '[' && $trim[0] !== '{')) return squadconf_inject_base64($body, $configs);
         $obj = json_decode($body, true);
         if (squadconf_is_singbox($obj)) return squadconf_inject_singbox($body, $configs);
-        if (setting('squad_xray_json_inject', '0') === '1') return squadconf_inject_xray_json($body, $configs);
+        if (squadconf_xray_json_enabled()) return squadconf_inject_xray_json($body, $configs);
         return $body;
     } catch (Throwable $e) { error_log('submw squadconf inject: ' . $e->getMessage()); return $body; }
 }

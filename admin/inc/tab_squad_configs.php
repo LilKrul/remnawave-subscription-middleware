@@ -12,6 +12,18 @@
         </div>
     </section>
 
+    <div class="card">
+        <form method="post" data-autosave>
+            <input type="hidden" name="csrf" value="<?= h($token) ?>">
+            <input type="hidden" name="action" value="save_sqcfg_settings">
+            <div class="set-row">
+                <div class="set-info"><div class="set-t">Инжект для xray-json</div><div class="set-d">Вливать WG/VLESS-конфиги сквада в подписки формата xray-json (напр. Happ). По умолчанию выкл. base64 / Clash / sing-box работают всегда при наличии конфигов. AmneziaWG в xray-json не вливается — ядро не умеет обфускацию.</div></div>
+                <label class="switch"><input type="checkbox" name="squad_xray_json_inject" <?= squadconf_xray_json_enabled() ? 'checked' : '' ?>><span class="sl"></span></label>
+            </div>
+            <div style="margin-top:1rem"><button type="submit">💾 Сохранить</button></div>
+        </form>
+    </div>
+
     <section class="coll" data-coll="sqcfg_add">
         <button type="button" class="coll-head" onclick="collToggle(this)"><span>Добавить простой конфиг (VLESS)</span>
             <span class="coll-hr"><svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></span>

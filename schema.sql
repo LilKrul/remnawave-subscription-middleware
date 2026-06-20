@@ -34,7 +34,8 @@ INSERT INTO settings (k, v) VALUES
     ('addsub_label',          ''),
     ('addsub_stub_on_traffic','1'),
     ('addsub_stub_label',     'Трафик доп-сервера истёк'),
-    ('addsub_merge_xray',     '0')
+    ('addsub_merge_xray',     '0'),
+    ('squad_xray_json_inject','0')
 ON CONFLICT(k) DO NOTHING;
 
 CREATE TABLE IF NOT EXISTS overrides (
