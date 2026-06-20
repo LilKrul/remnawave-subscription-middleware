@@ -324,8 +324,10 @@
         .wg-bulkbar{display:flex;align-items:center;gap:.75rem;margin:0 0 .8rem;flex-wrap:wrap}
         #wgTbl td:first-child,#wgTbl th:first-child{text-align:center}
         .osico{display:inline-block;width:15px;height:15px;vertical-align:-2px;background:var(--text-strong);-webkit-mask-repeat:no-repeat;mask-repeat:no-repeat;-webkit-mask-position:center;mask-position:center;-webkit-mask-size:contain;mask-size:contain}
-        .wg-issued-dev{display:inline-flex;align-items:center;gap:3px;cursor:help;opacity:.85}
+        .wg-issued-dev{display:inline-flex;align-items:center;gap:3px;opacity:.85}
         .wg-issued-name{font-weight:600}
+        .wg-tip{position:relative;cursor:help}
+        .wg-tip:hover::after{content:attr(data-tip);position:absolute;left:0;bottom:145%;white-space:pre-line;text-align:left;min-width:210px;max-width:340px;background:var(--card);color:var(--text);border:1px solid var(--line);border-radius:9px;padding:.55rem .75rem;font-size:.76rem;font-weight:500;line-height:1.55;box-shadow:var(--shadow);z-index:30}
     </style>
     <?php include __DIR__ . '/_sqcfg_js.php'; ?>
     <script>
@@ -367,7 +369,7 @@
     (function(){
         var cells = Array.prototype.slice.call(document.querySelectorAll('.wg-issued'));
         if (!cells.length) return;
-        function esc(s){ var d=document.createElement('div'); d.textContent=(s==null?'':s); return d.innerHTML; }
+        function esc(s){ var d=document.createElement('div'); d.textContent=(s==null?'':s); return d.innerHTML.replace(/"/g,'&quot;'); }
         function osFile(p){ p=String(p||'').toLowerCase();
             if(/ios|iphone|ipad|ipados|mac|darwin|os ?x/.test(p)) return 'apple';
             if(/android/.test(p)) return 'android';
@@ -379,13 +381,18 @@
             var su=c.dataset.su||'', hw=c.dataset.hwid||'', man=c.dataset.manual==='1';
             plat = plat || c.dataset.plat || '';
             var disp = name || su || '—';
-            var tip = hw
-                ? ((name?name+' · ':'') + su + ' | ' + (model?model+' · ':'') + (plat||'ОС?') + ' | hwid: ' + hw + (lim!=null?(' | лимит устройств: '+lim):''))
-                : ((name?name+' · ':'') + su + ' | привязка на пользователя' + (lim!=null?(' | лимит устройств: '+lim):''));
+            var lines = [];
+            if (name) lines.push(name);
+            if (su) lines.push('ID: ' + su);
+            if (hw) { lines.push((model?model+' · ':'') + (plat||'ОС не определена')); lines.push('hwid: ' + hw); }
+            else lines.push('привязка на пользователя');
+            if (lim != null) lines.push('лимит устройств: ' + lim);
+            if (man) lines.push('ручная привязка');
+            var tip = lines.join('\n');
             var dev = hw
-                ? ('<span class="wg-issued-dev" title="'+esc(tip)+'">('+ico('device')+ico(osFile(plat))+')</span>')
-                : (' <span class="muted" style="font-size:.72rem" title="'+esc(tip)+'">(на польз.)</span>');
-            c.innerHTML = '<span class="wg-issued-name" title="'+esc(tip)+'">'+esc(disp)+'</span> '+dev+(man?' <span class="muted" title="ручная привязка">🔧</span>':'');
+                ? ('<span class="wg-issued-dev">(' + ico('device') + ico(osFile(plat)) + ')</span>')
+                : ('<span class="muted" style="font-size:.72rem">(на польз.)</span>');
+            c.innerHTML = '<span class="wg-tip" data-tip="'+esc(tip)+'"><span class="wg-issued-name">'+esc(disp)+'</span> '+dev+(man?' <span class="muted">🔧</span>':'')+'</span>';
         }
         var bySu={};
         cells.forEach(function(c){ render(c,'','',c.dataset.plat||'',null); var su=c.dataset.su||''; if(su)(bySu[su]=bySu[su]||[]).push(c); });
