@@ -420,28 +420,71 @@ function wglease_sizing_cached() {
 
 function wglease_user_cache_ttl() { return 3600; }
 
+function ensure_wg_user_cache() {
+    static $done = false;
+    if ($done) return true;
+    if (!($p = db())) return false;
+    try {
+        if (db_driver() === 'mysql') {
+            $p->exec("CREATE TABLE IF NOT EXISTS wg_user_cache (
+                short_uuid VARCHAR(64) NOT NULL,
+                data TEXT NOT NULL,
+                ts INT UNSIGNED NOT NULL DEFAULT 0,
+                PRIMARY KEY (short_uuid),
+                KEY idx_wguc_ts (ts)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+        } else {
+            $p->exec("CREATE TABLE IF NOT EXISTS wg_user_cache (
+                short_uuid TEXT PRIMARY KEY,
+                data TEXT NOT NULL,
+                ts INTEGER NOT NULL DEFAULT 0
+            )");
+            $p->exec("CREATE INDEX IF NOT EXISTS idx_wguc_ts ON wg_user_cache(ts)");
+        }
+    } catch (Throwable $e) { error_log('submw wg_user_cache ensure: ' . $e->getMessage()); return false; }
+    $done = true;
+    return true;
+}
+
 function wglease_user_cache() {
-    $j = (string) setting('wgpool_user_cache', '');
-    $m = $j !== '' ? json_decode($j, true) : [];
-    if (!is_array($m)) return [];
-    $now = time(); $ttl = wglease_user_cache_ttl(); $out = [];
-    foreach ($m as $su => $e) {
-        if (!is_array($e)) continue;
-        if (($now - (int) ($e['ts'] ?? 0)) > $ttl) continue;
-        $out[(string) $su] = $e;
-    }
+    if (!ensure_wg_user_cache() || !($p = db())) return [];
+    $out = [];
+    try {
+        $st = $p->prepare('SELECT short_uuid, data, ts FROM wg_user_cache WHERE ts > ?');
+        $st->execute([time() - wglease_user_cache_ttl()]);
+        foreach ($st as $r) {
+            $e = json_decode((string) ($r['data'] ?? ''), true);
+            if (!is_array($e)) continue;
+            $e['ts'] = (int) ($r['ts'] ?? 0);
+            $out[(string) $r['short_uuid']] = $e;
+        }
+    } catch (Throwable $e) {}
     return $out;
 }
 
 function wglease_user_cache_put($short_uuid, array $entry) {
     $short_uuid = trim((string) $short_uuid);
-    if ($short_uuid === '') return;
-    $m = wglease_user_cache();
-    $entry['ts'] = time();
-    $m[$short_uuid] = $entry;
-    if (count($m) > 3000) {
-        uasort($m, fn($a, $b) => (int) ($b['ts'] ?? 0) <=> (int) ($a['ts'] ?? 0));
-        $m = array_slice($m, 0, 3000, true);
-    }
-    set_setting('wgpool_user_cache', json_encode($m, JSON_UNESCAPED_UNICODE));
+    if ($short_uuid === '' || !ensure_wg_user_cache() || !($p = db())) return;
+    unset($entry['ts']);
+    $now = time();
+    try {
+        if (db_driver() === 'mysql') {
+            $sql = 'INSERT INTO wg_user_cache (short_uuid, data, ts) VALUES (?, ?, ?)
+                    ON DUPLICATE KEY UPDATE data = VALUES(data), ts = VALUES(ts)';
+        } else {
+            $sql = 'INSERT INTO wg_user_cache (short_uuid, data, ts) VALUES (?, ?, ?)
+                    ON CONFLICT(short_uuid) DO UPDATE SET data = excluded.data, ts = excluded.ts';
+        }
+        $p->prepare($sql)->execute([$short_uuid, json_encode($entry, JSON_UNESCAPED_UNICODE), $now]);
+        if (random_int(1, 50) === 1) {
+            try {
+                $p->prepare('DELETE FROM wg_user_cache WHERE ts < ?')->execute([$now - wglease_user_cache_ttl()]);
+                if (db_driver() === 'mysql') {
+                    $p->exec('DELETE FROM wg_user_cache WHERE short_uuid NOT IN (SELECT s FROM (SELECT short_uuid s FROM wg_user_cache ORDER BY ts DESC LIMIT 3000) t)');
+                } else {
+                    $p->exec('DELETE FROM wg_user_cache WHERE short_uuid NOT IN (SELECT short_uuid FROM wg_user_cache ORDER BY ts DESC LIMIT 3000)');
+                }
+            } catch (Throwable $e) {}
+        }
+    } catch (Throwable $e) { error_log('submw wg_user_cache put: ' . $e->getMessage()); }
 }
