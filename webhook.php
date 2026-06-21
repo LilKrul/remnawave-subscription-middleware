@@ -31,6 +31,17 @@ if (!$sig_ok) {
     exit();
 }
 
+$ts_raw = $_SERVER['HTTP_X_REMNAWAVE_TIMESTAMP'] ?? '';
+if ($ts_raw !== '') {
+    $ts = strtotime((string) $ts_raw);
+    if ($ts !== false && (time() - $ts) > 3600) {
+        error_log('submw webhook: stale timestamp ' . $ts_raw . ' from ' . ($_SERVER['REMOTE_ADDR'] ?? '?'));
+        http_response_code(409);
+        echo 'Stale webhook';
+        exit();
+    }
+}
+
 $payload = json_decode($raw, true);
 if (!is_array($payload)) {
     http_response_code(400);
