@@ -143,8 +143,8 @@ function forward_webhook($raw_body, $event = null, $force = false) {
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_TIMEOUT        => $timeout,
             CURLOPT_CONNECTTIMEOUT => 3,
-            CURLOPT_SSL_VERIFYPEER => false,
-            CURLOPT_SSL_VERIFYHOST => false,
+            CURLOPT_SSL_VERIFYPEER => api_tls_verify(),
+            CURLOPT_SSL_VERIFYHOST => api_tls_verify() ? 2 : 0,
             CURLOPT_HTTPHEADER     => [
                 'Content-Type: application/json',
                 'X-Remnawave-Signature: ' . $sig,
