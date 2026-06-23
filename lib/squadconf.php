@@ -415,7 +415,10 @@ function squadconf_inject_base64($body, array $configs) {
     $decoded = base64_decode(trim((string) $body), true);
     if ($decoded === false || $decoded === '') return $body;
     $ua = strtolower((string) ($_SERVER['HTTP_USER_AGENT'] ?? ''));
-    if (strpos($ua, 'v2rayng') !== false || strpos($ua, 'v2rayn') !== false) {
+    $no_amnezia_ua = ['v2rayng', 'v2rayn', 'happ', 'incy'];
+    $no_amnezia = false;
+    foreach ($no_amnezia_ua as $needle) if (strpos($ua, $needle) !== false) { $no_amnezia = true; break; }
+    if ($no_amnezia) {
         $scheme = 'wireguard';
     } else {
         $scheme = (strpos($decoded, 'wireguard://') !== false && strpos($decoded, 'wg://') === false) ? 'wireguard' : 'wg';
