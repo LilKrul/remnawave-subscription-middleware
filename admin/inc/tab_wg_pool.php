@@ -42,6 +42,7 @@ if (($sqcfg_sizing['rows'] ?? []) && $wgp_ts > 0) {
         .osico{display:inline-block;width:15px;height:15px;vertical-align:-2px;background:var(--text-strong);-webkit-mask-repeat:no-repeat;mask-repeat:no-repeat;-webkit-mask-position:center;mask-position:center;-webkit-mask-size:contain;mask-size:contain}
         .wg-issued-dev{display:inline-flex;align-items:center;gap:3px;opacity:.85}
         .wg-issued-name{font-weight:600}
+        .wg-cli{display:inline-block;background:var(--bg2);border:1px solid var(--line);border-radius:6px;padding:.02rem .4rem;font-size:.72rem;color:var(--muted);vertical-align:1px}
         .wg-tip{position:relative;cursor:help}
         .wg-tip:hover::after{content:attr(data-tip);position:absolute;left:0;bottom:145%;white-space:pre-line;text-align:left;min-width:210px;max-width:340px;background:var(--card);color:var(--text);border:1px solid var(--line);border-radius:9px;padding:.55rem .75rem;font-size:.76rem;font-weight:500;line-height:1.55;box-shadow:var(--shadow);z-index:30}
         #wgTbl td:nth-child(6),#wgTbl th:nth-child(6){min-width:210px}
@@ -321,9 +322,9 @@ if (($sqcfg_sizing['rows'] ?? []) && $wgp_ts > 0) {
                     </form>
                 </td>
                 <td>
-                <?php if ($lz): $lsu = trim((string) ($lz['short_uuid'] ?? '')); $lhw = (string) ($lz['hwid'] ?? ''); $lplat = $lhw !== '' ? (string) ($sqcfg_hwid_plat[$lhw] ?? '') : ''; ?>
+                <?php if ($lz): $lsu = trim((string) ($lz['short_uuid'] ?? '')); $lhw = (string) ($lz['hwid'] ?? ''); $lplat = $lhw !== '' ? (string) ($sqcfg_hwid_plat[$lhw] ?? '') : ''; $lua = (string) ($lz['ua'] ?? ''); ?>
                     <?php $lname = ($lsu !== '' && !empty($wg_uc[$lsu]['u'])) ? (string) $wg_uc[$lsu]['u'] : ($lsu !== '' ? $lsu : '—'); ?>
-                    <span class="wg-issued" data-su="<?= h($lsu) ?>" data-hwid="<?= h($lhw) ?>" data-plat="<?= h($lplat) ?>" data-manual="<?= (int) ($lz['manual'] ?? 0) ?>"><span class="wg-issued-name"><?= h($lname) ?></span></span>
+                    <span class="wg-issued" data-su="<?= h($lsu) ?>" data-hwid="<?= h($lhw) ?>" data-plat="<?= h($lplat) ?>" data-ua="<?= h($lua) ?>" data-manual="<?= (int) ($lz['manual'] ?? 0) ?>"><span class="wg-issued-name"><?= h($lname) ?></span></span>
                 <?php else: ?>
                     <span class="muted">свободен</span>
                 <?php endif; ?>
@@ -464,22 +465,41 @@ if (($sqcfg_sizing['rows'] ?? []) && $wgp_ts > 0) {
             if(/linux|ubuntu|debian|fedora|arch|centos/.test(p)) return 'linux';
             return 'device'; }
         function ico(f){ return '<span class="osico" style="-webkit-mask-image:url(assets/os/'+f+'.svg);mask-image:url(assets/os/'+f+'.svg)"></span>'; }
+        function clientName(ua){ var raw=String(ua||''), u=raw.toLowerCase(); if(!u) return '';
+            if(/v2rayng/.test(u)) return 'v2rayNG';
+            if(/v2rayn(?!g)/.test(u)) return 'v2rayN';
+            if(/v2raytun/.test(u)) return 'v2RayTun';
+            if(/happ/.test(u)) return 'Happ';
+            if(/incy/.test(u)) return 'INCY';
+            if(/throne/.test(u)) return 'Throne';
+            if(/hiddify/.test(u)) return 'Hiddify';
+            if(/karing/.test(u)) return 'Karing';
+            if(/clash|mihomo|meta|stash|flclash|verge|koala/.test(u)) return 'Clash/Mihomo';
+            if(/sing[- ]?box/.test(u)) return 'sing-box';
+            if(/streisand/.test(u)) return 'Streisand';
+            if(/shadowrocket/.test(u)) return 'Shadowrocket';
+            if(/nekobox|nekoray/.test(u)) return 'NekoBox';
+            var m=raw.split(/[\/ ]/)[0]; return m ? m.slice(0,24) : raw.slice(0,24); }
         function render(c, name, model, plat, lim){
             var su=c.dataset.su||'', hw=c.dataset.hwid||'', man=c.dataset.manual==='1';
+            var ua=c.dataset.ua||'', cli=clientName(ua);
             plat = plat || c.dataset.plat || '';
             var disp = name || su || '—';
             var lines = [];
             if (name) lines.push(name);
             if (su) lines.push('ID: ' + su);
+            lines.push('клиент: ' + (cli || 'неизвестен'));
             if (hw) { lines.push((model?model+' · ':'') + (plat||'ОС не определена')); lines.push('hwid: ' + hw); }
             else lines.push('привязка на пользователя');
             if (lim != null) lines.push('лимит устройств: ' + lim);
             if (man) lines.push('ручная привязка');
+            if (ua) lines.push('UA: ' + ua);
             var tip = lines.join('\n');
             var dev = hw
                 ? ('<span class="wg-issued-dev">(' + ico('device') + ico(osFile(plat)) + ')</span>')
                 : ('<span class="muted" style="font-size:.72rem">(на польз.)</span>');
-            c.innerHTML = '<span class="wg-tip" data-tip="'+esc(tip)+'"><span class="wg-issued-name">'+esc(disp)+'</span> '+dev+(man?' <span class="muted">🔧</span>':'')+'</span>';
+            var cliTag = cli ? (' <span class="wg-cli">' + esc(cli) + '</span>') : '';
+            c.innerHTML = '<span class="wg-tip" data-tip="'+esc(tip)+'"><span class="wg-issued-name">'+esc(disp)+'</span> '+dev+cliTag+(man?' <span class="muted">🔧</span>':'')+'</span>';
         }
         function fromCache(c){
             var su=c.dataset.su||'', e=su?CACHE[su]:null; if(!e) return false;

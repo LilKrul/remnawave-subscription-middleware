@@ -57,6 +57,10 @@ function wglease_ensure() {
         }
     } catch (Throwable $e) { error_log('submw wglease ensure: ' . $e->getMessage()); }
     try { $p->exec('CREATE UNIQUE INDEX uq_wgl_cfg ON wg_lease (config_id)'); } catch (Throwable $e) {}
+    if (setting('wgl_ua_col', '') !== '1') {
+        try { $p->exec('ALTER TABLE wg_lease ADD COLUMN ua ' . (db_driver() === 'mysql' ? 'VARCHAR(255)' : 'TEXT') . ' NULL'); } catch (Throwable $e) {}
+        set_setting('wgl_ua_col', '1');
+    }
 }
 
 function wglease_mode($squad_uuid) {
@@ -78,6 +82,7 @@ function wglease_reclaim_days() { return max(1, (int) (setting('wgpool_reclaim_d
 function wglease_select($short_uuid, $hwid, array $u_squads, $types = null) {
     $short_uuid = (string) $short_uuid;
     $hwid = (string) $hwid;
+    $ua = substr((string) ($_SERVER['HTTP_USER_AGENT'] ?? ''), 0, 255);
     if (!$u_squads) return [];
     $cfgs = squadconf_for_squads($u_squads);
     if (!$cfgs) return [];
@@ -115,7 +120,7 @@ function wglease_select($short_uuid, $hwid, array $u_squads, $types = null) {
             $base = 's:' . $short_uuid;
         }
         foreach ($by_type as $t => $cands) {
-            $pick = wglease_pick($sq, $base . '|t:' . $t, $short_uuid, ($mode === 'devices' ? $hwid : ''), $cands);
+            $pick = wglease_pick($sq, $base . '|t:' . $t, $short_uuid, ($mode === 'devices' ? $hwid : ''), $cands, $ua);
             if ($pick) { $added[(int) $pick['id']] = true; $out[] = $pick; }
         }
     }
@@ -128,9 +133,10 @@ function wglease_select($short_uuid, $hwid, array $u_squads, $types = null) {
 
 function wglease_key($pool_id, $subkey) { return sha1((string) $pool_id . '|' . (string) $subkey); }
 
-function wglease_pick($pool_id, $subkey, $short_uuid, $hwid, array $cands) {
+function wglease_pick($pool_id, $subkey, $short_uuid, $hwid, array $cands, $ua = '') {
     wglease_ensure();
     if (!($p = db()) || !$cands) return null;
+    $ua = (string) $ua;
     $lease_key = wglease_key($pool_id, $subkey);
     $by_id = [];
     foreach ($cands as $c) $by_id[(int) $c['id']] = $c;
@@ -142,7 +148,8 @@ function wglease_pick($pool_id, $subkey, $short_uuid, $hwid, array $cands) {
         $row = $st->fetch();
     } catch (Throwable $e) { $row = null; }
     if ($row && isset($by_id[(int) $row['config_id']])) {
-        try { $p->prepare('UPDATE wg_lease SET seen_ts = ? WHERE id = ?')->execute([$now, (int) $row['id']]); } catch (Throwable $e) {}
+        if ($ua !== '') { try { $p->prepare('UPDATE wg_lease SET seen_ts = ?, ua = ? WHERE id = ?')->execute([$now, $ua, (int) $row['id']]); } catch (Throwable $e) {} }
+        else { try { $p->prepare('UPDATE wg_lease SET seen_ts = ? WHERE id = ?')->execute([$now, (int) $row['id']]); } catch (Throwable $e) {} }
         return $by_id[(int) $row['config_id']];
     }
     if ($row && !isset($by_id[(int) $row['config_id']])) {
@@ -160,19 +167,19 @@ function wglease_pick($pool_id, $subkey, $short_uuid, $hwid, array $cands) {
             if ($m !== false && isset($by_id[(int) $m])) return $by_id[(int) $m];
         } catch (Throwable $e) {}
     }
-    $cfg = wglease_assign($p, $pool_id, $lease_key, $short_uuid, $hwid, $cand_ids, $by_id, $now);
+    $cfg = wglease_assign($p, $pool_id, $lease_key, $short_uuid, $hwid, $cand_ids, $by_id, $now, $ua);
     if ($cfg === null) {
         try {
             if ($hwid === '') $p->prepare('DELETE FROM wg_lease WHERE pool_id = ? AND manual = 0 AND hwid IS NOT NULL')->execute([$pool_id]);
             else $p->prepare('DELETE FROM wg_lease WHERE pool_id = ? AND manual = 0 AND hwid IS NULL')->execute([$pool_id]);
         } catch (Throwable $e) {}
         wglease_reclaim($pool_id);
-        $cfg = wglease_assign($p, $pool_id, $lease_key, $short_uuid, $hwid, $cand_ids, $by_id, $now);
+        $cfg = wglease_assign($p, $pool_id, $lease_key, $short_uuid, $hwid, $cand_ids, $by_id, $now, $ua);
     }
     return $cfg;
 }
 
-function wglease_assign($p, $pool_id, $lease_key, $short_uuid, $hwid, array $cand_ids, array $by_id, $now) {
+function wglease_assign($p, $pool_id, $lease_key, $short_uuid, $hwid, array $cand_ids, array $by_id, $now, $ua = '') {
     if (!$cand_ids) return null;
     try {
         $in = implode(',', array_fill(0, count($cand_ids), '?'));
@@ -184,8 +191,8 @@ function wglease_assign($p, $pool_id, $lease_key, $short_uuid, $hwid, array $can
     foreach ($cand_ids as $cid) {
         if (isset($taken[$cid])) continue;
         try {
-            $ins = $p->prepare('INSERT INTO wg_lease (pool_id, lease_key, config_id, short_uuid, hwid, manual, created_ts, seen_ts) VALUES (?, ?, ?, ?, ?, 0, ?, ?)');
-            $ins->execute([$pool_id, $lease_key, $cid, ($short_uuid !== '' ? $short_uuid : null), ($hwid !== '' ? $hwid : null), $now, $now]);
+            $ins = $p->prepare('INSERT INTO wg_lease (pool_id, lease_key, config_id, short_uuid, hwid, manual, created_ts, seen_ts, ua) VALUES (?, ?, ?, ?, ?, 0, ?, ?, ?)');
+            $ins->execute([$pool_id, $lease_key, $cid, ($short_uuid !== '' ? $short_uuid : null), ($hwid !== '' ? $hwid : null), $now, $now, ((string) $ua !== '' ? (string) $ua : null)]);
             return $by_id[$cid];
         } catch (Throwable $e) {
             try {
