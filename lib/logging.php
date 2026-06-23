@@ -114,6 +114,37 @@ function reqlog_today_stats() {
     return $out;
 }
 
+function reqlog_collapse(array $rows) {
+    $out = [];
+    foreach ($rows as $r) {
+        $n = count($out);
+        $su = (string) ($r['short_uuid'] ?? '');
+        if ($n > 0 && $su !== '') {
+            $p = $out[$n - 1];
+            $same_ts = ((int) ($r['ts_epoch'] ?? 0) > 0)
+                ? ((int) $r['ts_epoch'] === (int) ($p['ts_epoch'] ?? 0))
+                : ((string) ($r['ts'] ?? '') === (string) ($p['ts'] ?? ''));
+            if ($su === (string) ($p['short_uuid'] ?? '')
+                && $same_ts
+                && (string) ($r['decision'] ?? '') === (string) ($p['decision'] ?? '')) {
+                $out[$n - 1]['dup'] = (int) ($p['dup'] ?? 1) + 1;
+                continue;
+            }
+        }
+        $r['dup'] = max(1, (int) ($r['dup'] ?? 1));
+        $out[] = $r;
+    }
+    return $out;
+}
+
+function reqlog_plural($n) {
+    $n = abs((int) $n) % 100; $n1 = $n % 10;
+    if ($n > 10 && $n < 20) return 'обновлений';
+    if ($n1 === 1) return 'обновление';
+    if ($n1 > 1 && $n1 < 5) return 'обновления';
+    return 'обновлений';
+}
+
 function log_webhook($event, $short_uuid, $username, $status, $sig_ok, $action) {
     if (!($p = db())) return;
     try {

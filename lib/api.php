@@ -123,12 +123,62 @@ function remnawave_delete_hwid($userUuid, $hwid) {
     ]);
 }
 
+function remnawave_hwid_top_users(&$error = '') {
+    $error = '';
+    $all = [];
+    $start = 0; $size = 250; $guard = 0;
+    do {
+        [$ok, $code, $data, $e] = remnawave_api_get("/api/hwid/devices/top-users?size={$size}&start={$start}");
+        if (!$ok) { $error = $e ?: ('HTTP ' . $code); break; }
+        $resp = $data['response'] ?? $data;
+        $rows = $resp['users'] ?? (is_array($resp) ? $resp : []);
+        $total = (int) ($resp['total'] ?? count($rows));
+        if (!is_array($rows)) $rows = [];
+        foreach ($rows as $r) $all[] = $r;
+        $start += $size;
+        $guard++;
+    } while (count($all) < $total && $guard < 60 && count($rows) > 0);
+    return $all;
+}
+
+function remnawave_hwid_all_devices(&$error = '') {
+    $error = '';
+    $all = [];
+    $start = 0; $size = 250; $guard = 0;
+    do {
+        [$ok, $code, $data, $e] = remnawave_api_get("/api/hwid/devices?size={$size}&start={$start}");
+        if (!$ok) { $error = $e ?: ('HTTP ' . $code); break; }
+        $resp = $data['response'] ?? $data;
+        $rows = $resp['devices'] ?? (is_array($resp) ? $resp : []);
+        $total = (int) ($resp['total'] ?? count($rows));
+        if (!is_array($rows)) $rows = [];
+        foreach ($rows as $r) $all[] = $r;
+        $start += $size;
+        $guard++;
+    } while (count($all) < $total && $guard < 200 && count($rows) > 0);
+    return $all;
+}
+
 function remnawave_internal_squads(&$error = '') {
     $error = '';
     [$ok, $code, $data, $e] = remnawave_api_get('/api/internal-squads');
     if (!$ok) { $error = $e ?: ('HTTP ' . $code); return []; }
     $resp = $data['response'] ?? $data;
     $list = $resp['internalSquads'] ?? (is_array($resp) ? $resp : []);
+    $out = [];
+    if (is_array($list)) foreach ($list as $s) {
+        if (!is_array($s) || empty($s['uuid'])) continue;
+        $out[] = ['uuid' => (string) $s['uuid'], 'name' => (string) ($s['name'] ?? $s['uuid']), 'members' => (int) ($s['info']['membersCount'] ?? 0)];
+    }
+    return $out;
+}
+
+function remnawave_external_squads(&$error = '') {
+    $error = '';
+    [$ok, $code, $data, $e] = remnawave_api_get('/api/external-squads');
+    if (!$ok) { $error = $e ?: ('HTTP ' . $code); return []; }
+    $resp = $data['response'] ?? $data;
+    $list = $resp['externalSquads'] ?? (is_array($resp) ? $resp : []);
     $out = [];
     if (is_array($list)) foreach ($list as $s) {
         if (!is_array($s) || empty($s['uuid'])) continue;
@@ -172,4 +222,58 @@ function remnawave_reset_traffic($uuid, &$error = '') {
     [$ok, $code, $data, $e] = remnawave_api_request('POST', '/api/users/' . rawurlencode($uuid) . '/actions/reset-traffic');
     if (!$ok) { $error = $e ?: ('HTTP ' . $code); return false; }
     return true;
+}
+
+
+function remnawave_system_stats($maxAge = 45, &$error = '') {
+    $error = '';
+    $now = time();
+    if ($maxAge > 0) {
+        $ts = (int) setting('panelstats_ts', '0');
+        if ($ts > 0 && ($now - $ts) <= $maxAge) {
+            $c = json_decode((string) setting('panelstats_json', ''), true);
+            if (is_array($c)) { $c['cached'] = true; $c['age'] = $now - $ts; return $c; }
+        }
+    }
+    $out = [
+        'ok' => false, 'ts' => $now, 'cached' => false, 'age' => 0, 'error' => '',
+        'users'  => ['ACTIVE' => null, 'LIMITED' => null, 'EXPIRED' => null, 'DISABLED' => null, 'total' => null],
+        'online' => ['now' => null, 'day' => null, 'week' => null],
+        'nodes'  => ['online' => null, 'total' => null],
+    ];
+    [$ok, $code, $data, $e] = remnawave_api_get('/api/system/stats');
+    if (!$ok) { $error = $e ?: ('HTTP ' . $code); $out['error'] = $error; return $out; }
+    $resp = $data['response'] ?? $data;
+    $sc = $resp['users']['statusCounts'] ?? ($resp['statusCounts'] ?? null);
+    if (is_array($sc)) foreach (['ACTIVE', 'LIMITED', 'EXPIRED', 'DISABLED'] as $k) if (isset($sc[$k])) $out['users'][$k] = (int) $sc[$k];
+    $tot = $resp['users']['totalUsers'] ?? ($resp['totalUsers'] ?? null);
+    if ($tot !== null) $out['users']['total'] = (int) $tot;
+    elseif (is_array($sc)) { $s2 = 0; foreach ($sc as $v) $s2 += (int) $v; $out['users']['total'] = $s2; }
+    $os = $resp['onlineStats'] ?? ($resp['users']['onlineStats'] ?? ($resp['stats']['onlineStats'] ?? null));
+    if (is_array($os)) {
+        if (isset($os['onlineNow'])) $out['online']['now'] = (int) $os['onlineNow'];
+        if (isset($os['lastDay']))   $out['online']['day']  = (int) $os['lastDay'];
+        if (isset($os['lastWeek']))  $out['online']['week'] = (int) $os['lastWeek'];
+    }
+    $no = $resp['nodes']['totalOnline'] ?? ($resp['nodesOnline'] ?? null);
+    if ($no !== null) $out['nodes']['online'] = (int) $no;
+    $out['ok'] = true;
+    [$nok, , $nd, ] = remnawave_api_get('/api/nodes');
+    if ($nok) {
+        $nr = $nd['response'] ?? $nd;
+        $list = is_array($nr) ? ($nr['nodes'] ?? (isset($nr[0]) ? $nr : [])) : [];
+        if (is_array($list) && $list) {
+            $out['nodes']['total'] = count($list);
+            $on = 0; $flag = false;
+            foreach ($list as $n) {
+                if (!is_array($n)) continue;
+                if (array_key_exists('isConnected', $n)) { $flag = true; if (!empty($n['isConnected'])) $on++; }
+                elseif (array_key_exists('isNodeOnline', $n)) { $flag = true; if (!empty($n['isNodeOnline'])) $on++; }
+            }
+            if ($flag) $out['nodes']['online'] = $on;
+        }
+    }
+    set_setting('panelstats_json', json_encode($out, JSON_UNESCAPED_UNICODE));
+    set_setting('panelstats_ts', (string) $now);
+    return $out;
 }

@@ -3,6 +3,15 @@ $si_max = 1;
 foreach ($sys_series as $pt) if ((int) $pt['hits'] > $si_max) $si_max = (int) $pt['hits'];
 $si_factor = metrics_peak_factor();
 $si_floor  = metrics_peak_floor();
+$si_seg = in_array(($_COOKIE['si_seg'] ?? ''), ['mw', 'panel', 'env'], true) ? $_COOKIE['si_seg'] : 'mw';
+$si_pc = json_decode((string) setting('panelstats_json', ''), true);
+if (!is_array($si_pc)) $si_pc = null;
+$si_pu = is_array($si_pc['users'] ?? null) ? $si_pc['users'] : [];
+$si_po = is_array($si_pc['online'] ?? null) ? $si_pc['online'] : [];
+$si_pn = is_array($si_pc['nodes'] ?? null) ? $si_pc['nodes'] : [];
+$si_pf = function ($v) { return ($v === null || $v === '') ? '—' : number_format((int) $v, 0, '.', ' '); };
+$si_non = (isset($si_pn['online']) && $si_pn['online'] !== null) ? (int) $si_pn['online'] : null;
+$si_ntot = (isset($si_pn['total']) && $si_pn['total'] !== null) ? (int) $si_pn['total'] : null;
 ?>
     <style>
         .si-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:1rem;margin-bottom:1rem}
@@ -29,98 +38,159 @@ $si_floor  = metrics_peak_floor();
         .si-bar2.zero{background:var(--line);opacity:.5}
         .si-bar2 .seg-bot{background:var(--line);opacity:.7}
         .si-bar2 .seg-sub{background:var(--accent);opacity:.9}
+        .si-kpi{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:.7rem;margin-bottom:1.1rem}
+        .si-kpi .si-card .n{font-size:1.75rem}
+        .si-panels{min-height:440px}
+        .si-seg-panel[hidden]{display:none}
+        .si-sub{font-weight:700;font-size:.95rem;margin:1.1rem 0 .5rem;color:var(--text-strong)}
+        .si-sub:first-child{margin-top:.2rem}
+        .si-pnote{display:flex;align-items:center;gap:.5rem;flex-wrap:wrap;font-size:.8rem;color:var(--muted);margin:.1rem 0 .9rem}
     </style>
-    <div class="si-grid">
+
+    <div class="si-kpi">
+        <div class="si-card"><div class="n" id="k_rpm"><?= h(number_format((float) ($sys_load['rpm_60'] ?? 0), 1)) ?></div><div class="l">запр/мин (час)</div></div>
+        <div class="si-card"><div class="n" id="k_online"><?= $si_pf($si_po['now'] ?? null) ?></div><div class="l">онлайн сейчас</div></div>
+        <div class="si-card"><div class="n" id="k_active"><?= $si_pf($si_pu['ACTIVE'] ?? null) ?></div><div class="l">активных юзеров</div></div>
+        <div class="si-card"><div class="n"><span id="k_nodes_on"><?= $si_non === null ? '—' : $si_non ?></span> / <span id="k_nodes_tot"><?= $si_ntot === null ? '—' : $si_ntot ?></span></div><div class="l">ноды онлайн</div></div>
+    </div>
+
+    <div class="seg" id="siSeg">
+        <button type="button" data-seg="mw" class="<?= $si_seg === 'mw' ? 'on' : '' ?>">Прослойка</button>
+        <button type="button" data-seg="panel" class="<?= $si_seg === 'panel' ? 'on' : '' ?>">Панель</button>
+        <button type="button" data-seg="env" class="<?= $si_seg === 'env' ? 'on' : '' ?>">Окружение</button>
+    </div>
+
+    <div class="si-panels">
+    <div class="si-seg-panel" data-panel="mw"<?= $si_seg === 'mw' ? '' : ' hidden' ?>>
         <div class="card">
-            <h2 style="margin-top:0">Система</h2>
-            <div class="si-kv"><span class="k">PHP</span><span class="v"><?= h($sys_info['php_version']) ?> · <?= h($sys_info['sapi']) ?></span></div>
-            <div class="si-kv"><span class="k">ОС</span><span class="v"><?= h($sys_info['os']) ?></span></div>
-            <?php if ($sys_info['server'] !== ''): ?><div class="si-kv"><span class="k">Веб-сервер</span><span class="v"><?= h($sys_info['server']) ?></span></div><?php endif; ?>
-            <div class="si-kv"><span class="k">Load average</span><span class="v" id="si_load"><?php if (is_array($sys_info['load'])): echo h(implode(' · ', array_map(fn($x) => number_format((float) $x, 2), $sys_info['load']))); echo $sys_info['cores'] ? (' (ядер: ' . (int) $sys_info['cores'] . ')') : ''; else: echo '—'; endif; ?></span></div>
-            <div class="si-kv"><span class="k">Память PHP</span><span class="v"><span id="si_mem"><?= h(metrics_fmt_bytes($sys_info['mem_peak'])) ?></span> / <?= h($sys_info['mem_limit']) ?></span></div>
-            <div class="si-kv"><span class="k">OPcache · cURL</span><span class="v"><?= $sys_info['opcache'] ? 'вкл' : 'выкл' ?> · <?= $sys_info['curl'] ? 'есть' : 'нет' ?></span></div>
+            <div class="loghead">
+                <h2>Нагрузка <span id="siAuto" class="muted" style="font-weight:400;font-size:.76rem"></span></h2>
+                <div class="loghead-r">
+                    <button type="button" class="btn ghost" onclick="siRefresh()">🔄 Обновить</button>
+                </div>
+            </div>
+            <p class="muted">Считается каждый запрос к прослойке. <span style="color:var(--accent-text)">Обновления подписки</span> (реальные клиенты с заголовком подписки) показаны отдельно от <b>краулеров и сканеров</b> — прочего фонового трафика. Время ответа учитывает поход к панели.</p>
+            <div class="si-leg">
+                <span><span class="si-dot sub"></span>Обновления подписки</span>
+                <span><span class="si-dot bot"></span>Краулеры / сканеры</span>
+            </div>
+            <div class="si-stat">
+                <div class="si-card"><div class="n" id="si_m1"><?= (int) $sys_load['m1'] ?></div><div class="l">за 1 мин</div><div class="sb" id="si_m1b"><span class="si-dot sub"></span><span class="vsub"><?= (int) $sys_load['m1_sub'] ?></span> <span class="si-dot bot"></span><?= (int) $sys_load['m1'] - (int) $sys_load['m1_sub'] ?></div></div>
+                <div class="si-card"><div class="n" id="si_m5"><?= (int) $sys_load['m5'] ?></div><div class="l">за 5 мин</div><div class="sb" id="si_m5b"><span class="si-dot sub"></span><span class="vsub"><?= (int) $sys_load['m5_sub'] ?></span> <span class="si-dot bot"></span><?= (int) $sys_load['m5'] - (int) $sys_load['m5_sub'] ?></div></div>
+                <div class="si-card"><div class="n" id="si_m60"><?= (int) $sys_load['m60'] ?></div><div class="l">за час</div><div class="sb" id="si_m60b"><span class="si-dot sub"></span><span class="vsub"><?= (int) $sys_load['m60_sub'] ?></span> <span class="si-dot bot"></span><?= (int) $sys_load['m60'] - (int) $sys_load['m60_sub'] ?></div></div>
+                <div class="si-card"><div class="n" id="si_today"><?= (int) $sys_load['today'] ?></div><div class="l">за сутки</div><div class="sb" id="si_todayb"><span class="si-dot sub"></span><span class="vsub"><?= (int) $sys_load['today_sub'] ?></span> <span class="si-dot bot"></span><?= (int) $sys_load['today'] - (int) $sys_load['today_sub'] ?></div></div>
+                <div class="si-card"><div class="n" id="si_rpm"><?= h(number_format((float) $sys_load['rpm_60'], 1)) ?></div><div class="l">запр/мин (час)</div></div>
+                <div class="si-card"><div class="n" id="si_avg"><?= (int) $sys_load['avg_ms'] ?><span style="font-size:.8rem"> мс</span></div><div class="l">средн. ответ (час)</div></div>
+                <div class="si-card"><div class="n" id="si_max"><?= (int) $sys_load['max_ms_60'] ?><span style="font-size:.8rem"> мс</span></div><div class="l">макс. ответ (час)</div></div>
+            </div>
+            <div class="si-chart" id="si_chart">
+                <?php foreach ($sys_series as $pt): $hh = (int) $pt['hits']; $hs = min($hh, (int) $pt['sub']); $hpx = $hh > 0 ? max(3, (int) round($hh / $si_max * 108)) : 2; $spx = $hh > 0 ? (int) round($hpx * $hs / $hh) : 0; $bpx = $hpx - $spx; ?>
+                <div class="si-bar2<?= $hh === 0 ? ' zero' : '' ?>" style="height:<?= $hpx ?>px" title="<?= h(date('H:i', (int) $pt['ts'])) ?> · подписка <?= $hs ?> · краулеры <?= $hh - $hs ?> · всего <?= $hh ?> · <?= (int) $pt['ms'] ?> мс"><div class="seg-bot" style="height:<?= $bpx ?>px"></div><div class="seg-sub" style="height:<?= $spx ?>px"></div></div>
+                <?php endforeach; ?>
+            </div>
+            <div class="si-chart-x"><span>−60 мин</span><span>сейчас</span></div>
         </div>
+
+        <section class="<?= coll_cls('sysinfo_peaks', true) ?>" data-coll="sysinfo_peaks">
+            <button type="button" class="coll-head" onclick="collToggle(this)"><span>Аномальные пики нагрузки</span>
+                <span class="coll-hr"><svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></span>
+            </button>
+            <div class="coll-body">
+                <p class="muted">Минута помечается пиком, если запросов в неё ≥ <b><?= h(number_format($si_factor, 1)) ?>×</b> от средней за предыдущий час И не меньше порога <b><?= (int) $si_floor ?></b> запр/мин.</p>
+                <div style="display:flex;gap:1rem;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;margin-bottom:1rem">
+                    <form method="post" data-autosave style="display:flex;gap:1rem;flex-wrap:wrap;align-items:flex-end;margin:0">
+                        <input type="hidden" name="csrf" value="<?= h($token) ?>">
+                        <input type="hidden" name="action" value="save_metrics_cfg">
+                        <div><label style="display:block;font-size:.8rem;font-weight:600;margin-bottom:.3rem">Множитель (×средней)</label><input type="number" step="0.1" min="1.5" name="metrics_peak_factor" value="<?= h(number_format($si_factor, 1)) ?>" style="width:120px;padding:.5rem;border:1px solid var(--line);border-radius:8px;background:var(--bg2);color:var(--text)"></div>
+                        <div><label style="display:block;font-size:.8rem;font-weight:600;margin-bottom:.3rem">Мин. порог, запр/мин</label><input type="number" min="5" name="metrics_peak_floor" value="<?= (int) $si_floor ?>" style="width:120px;padding:.5rem;border:1px solid var(--line);border-radius:8px;background:var(--bg2);color:var(--text)"></div>
+                        <button class="btn" type="submit" style="width:auto;padding:.55rem 1.1rem">Сохранить</button>
+                    </form>
+                    <form method="post" onsubmit="return uiConfirmForm(this,'Очистить лог пиков нагрузки?')" style="margin:0">
+                        <input type="hidden" name="csrf" value="<?= h($token) ?>">
+                        <input type="hidden" name="action" value="clear_peaks">
+                        <button class="danger" type="submit">🧹 Очистить</button>
+                    </form>
+                </div>
+                <table class="logtbl">
+                    <thead><tr><th>Время</th><th>Запросов/мин</th><th>Базовая линия</th><th>Макс. ответ</th><th>Пик памяти</th></tr></thead>
+                    <tbody id="si_peaks">
+                    <?php foreach ($sys_peaks as $pk): ?>
+                    <tr>
+                        <td class="muted si-pk-ts" data-ts="<?= (int) $pk['minute_ts'] ?>"><?= h(date('Y-m-d H:i', (int) $pk['minute_ts'])) ?></td>
+                        <td><span class="tag error"><?= (int) $pk['hits'] ?></span></td>
+                        <td class="muted"><?= (int) $pk['baseline'] ?></td>
+                        <td class="muted"><?= (int) $pk['dur_ms_max'] ?> мс</td>
+                        <td class="muted"><?= h(metrics_fmt_bytes((int) $pk['mem_max'])) ?></td>
+                    </tr>
+                    <?php endforeach; ?>
+                    <?php if (!$sys_peaks): ?><tr><td colspan="5" class="muted">Пиков не зафиксировано</td></tr><?php endif; ?>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    </div>
+
+    <div class="si-seg-panel" data-panel="panel"<?= $si_seg === 'panel' ? '' : ' hidden' ?>>
         <div class="card">
-            <h2 style="margin-top:0">База данных</h2>
-            <div class="si-kv"><span class="k">Движок</span><span class="v"><?= $sys_db['driver'] === 'mysql' ? 'MySQL' : 'SQLite' ?></span></div>
-            <div class="si-kv"><span class="k">Размер</span><span class="v" id="si_dbsize"><?= h(metrics_fmt_bytes($sys_db['size'])) ?></span></div>
-            <div class="si-kv"><span class="k">Расположение</span><span class="v" style="font-size:.78rem"><?= h($sys_db['location']) ?></span></div>
-            <?php foreach (($sys_db['tables'] ?? []) as $tname => $cnt): ?>
-            <div class="si-kv"><span class="k"><?= h($tname) ?></span><span class="v"><?= $cnt === null ? '—' : (int) $cnt ?></span></div>
-            <?php endforeach; ?>
+            <div class="loghead">
+                <h2>Панель Remnawave</h2>
+                <div class="loghead-r">
+                    <button type="button" class="btn ghost" onclick="siPanelFetch(true)">🔄 Обновить</button>
+                </div>
+            </div>
+            <div class="si-pnote">
+                <span>Данные из REST API панели, кешируются на сервере на 45 с.</span>
+                <span id="p_status" class="muted"></span>
+            </div>
+            <div class="si-sub">Пользователи</div>
+            <div class="si-stat">
+                <div class="si-card"><div class="n" id="p_active"><?= $si_pf($si_pu['ACTIVE'] ?? null) ?></div><div class="l">активные</div></div>
+                <div class="si-card"><div class="n" id="p_limited"><?= $si_pf($si_pu['LIMITED'] ?? null) ?></div><div class="l">лимит трафика</div></div>
+                <div class="si-card"><div class="n" id="p_expired"><?= $si_pf($si_pu['EXPIRED'] ?? null) ?></div><div class="l">истёкшие</div></div>
+                <div class="si-card"><div class="n" id="p_disabled"><?= $si_pf($si_pu['DISABLED'] ?? null) ?></div><div class="l">отключённые</div></div>
+                <div class="si-card"><div class="n" id="p_total"><?= $si_pf($si_pu['total'] ?? null) ?></div><div class="l">всего</div></div>
+            </div>
+            <div class="si-sub">Онлайн и ноды</div>
+            <div class="si-stat">
+                <div class="si-card"><div class="n" id="p_on_now"><?= $si_pf($si_po['now'] ?? null) ?></div><div class="l">онлайн сейчас</div></div>
+                <div class="si-card"><div class="n" id="p_on_day"><?= $si_pf($si_po['day'] ?? null) ?></div><div class="l">за сутки</div></div>
+                <div class="si-card"><div class="n" id="p_on_week"><?= $si_pf($si_po['week'] ?? null) ?></div><div class="l">за неделю</div></div>
+                <div class="si-card"><div class="n"><span id="p_nodes_on"><?= $si_non === null ? '—' : $si_non ?></span> / <span id="p_nodes_tot"><?= $si_ntot === null ? '—' : $si_ntot ?></span></div><div class="l">ноды онлайн</div></div>
+            </div>
         </div>
     </div>
 
-    <div class="card">
-        <div class="loghead">
-            <h2>Нагрузка <span id="siAuto" class="muted" style="font-weight:400;font-size:.76rem"></span></h2>
-            <div class="loghead-r">
-                <button type="button" class="btn ghost" onclick="siRefresh()">🔄 Обновить</button>
+    <div class="si-seg-panel" data-panel="env"<?= $si_seg === 'env' ? '' : ' hidden' ?>>
+        <div class="si-grid">
+            <div class="card">
+                <h2 style="margin-top:0">Система</h2>
+                <div class="si-kv"><span class="k">PHP</span><span class="v"><?= h($sys_info['php_version']) ?> · <?= h($sys_info['sapi']) ?></span></div>
+                <div class="si-kv"><span class="k">ОС</span><span class="v"><?= h($sys_info['os']) ?></span></div>
+                <?php if ($sys_info['server'] !== ''): ?><div class="si-kv"><span class="k">Веб-сервер</span><span class="v"><?= h($sys_info['server']) ?></span></div><?php endif; ?>
+                <div class="si-kv"><span class="k">Load average</span><span class="v" id="si_load"><?php if (is_array($sys_info['load'])): echo h(implode(' · ', array_map(fn($x) => number_format((float) $x, 2), $sys_info['load']))); echo $sys_info['cores'] ? (' (ядер: ' . (int) $sys_info['cores'] . ')') : ''; else: echo '—'; endif; ?></span></div>
+                <div class="si-kv"><span class="k">Память PHP</span><span class="v"><span id="si_mem"><?= h(metrics_fmt_bytes($sys_info['mem_peak'])) ?></span> / <?= h($sys_info['mem_limit']) ?></span></div>
+                <div class="si-kv"><span class="k">OPcache · cURL</span><span class="v"><?= $sys_info['opcache'] ? 'вкл' : 'выкл' ?> · <?= $sys_info['curl'] ? 'есть' : 'нет' ?></span></div>
+            </div>
+            <div class="card">
+                <h2 style="margin-top:0">База данных</h2>
+                <div class="si-kv"><span class="k">Движок</span><span class="v"><?= $sys_db['driver'] === 'mysql' ? 'MySQL' : 'SQLite' ?></span></div>
+                <div class="si-kv"><span class="k">Размер</span><span class="v" id="si_dbsize"><?= h(metrics_fmt_bytes($sys_db['size'])) ?></span></div>
+                <div class="si-kv"><span class="k">Расположение</span><span class="v" style="font-size:.78rem"><?= h($sys_db['location']) ?></span></div>
+                <?php foreach (($sys_db['tables'] ?? []) as $tname => $cnt): ?>
+                <div class="si-kv"><span class="k"><?= h($tname) ?></span><span class="v"><?= $cnt === null ? '—' : (int) $cnt ?></span></div>
+                <?php endforeach; ?>
             </div>
         </div>
-        <p class="muted">Считается каждый запрос к прослойке. <span style="color:var(--accent-text)">Обновления подписки</span> (реальные клиенты с заголовком подписки) показаны отдельно от <b>краулеров и сканеров</b> — прочего фонового трафика. Время ответа учитывает поход к панели.</p>
-        <div class="si-leg">
-            <span><span class="si-dot sub"></span>Обновления подписки</span>
-            <span><span class="si-dot bot"></span>Краулеры / сканеры</span>
-        </div>
-        <div class="si-stat">
-            <div class="si-card"><div class="n" id="si_m1"><?= (int) $sys_load['m1'] ?></div><div class="l">за 1 мин</div><div class="sb" id="si_m1b"><span class="si-dot sub"></span><span class="vsub"><?= (int) $sys_load['m1_sub'] ?></span> <span class="si-dot bot"></span><?= (int) $sys_load['m1'] - (int) $sys_load['m1_sub'] ?></div></div>
-            <div class="si-card"><div class="n" id="si_m5"><?= (int) $sys_load['m5'] ?></div><div class="l">за 5 мин</div><div class="sb" id="si_m5b"><span class="si-dot sub"></span><span class="vsub"><?= (int) $sys_load['m5_sub'] ?></span> <span class="si-dot bot"></span><?= (int) $sys_load['m5'] - (int) $sys_load['m5_sub'] ?></div></div>
-            <div class="si-card"><div class="n" id="si_m60"><?= (int) $sys_load['m60'] ?></div><div class="l">за час</div><div class="sb" id="si_m60b"><span class="si-dot sub"></span><span class="vsub"><?= (int) $sys_load['m60_sub'] ?></span> <span class="si-dot bot"></span><?= (int) $sys_load['m60'] - (int) $sys_load['m60_sub'] ?></div></div>
-            <div class="si-card"><div class="n" id="si_today"><?= (int) $sys_load['today'] ?></div><div class="l">за сутки</div><div class="sb" id="si_todayb"><span class="si-dot sub"></span><span class="vsub"><?= (int) $sys_load['today_sub'] ?></span> <span class="si-dot bot"></span><?= (int) $sys_load['today'] - (int) $sys_load['today_sub'] ?></div></div>
-            <div class="si-card"><div class="n" id="si_rpm"><?= h(number_format((float) $sys_load['rpm_60'], 1)) ?></div><div class="l">запр/мин (час)</div></div>
-            <div class="si-card"><div class="n" id="si_avg"><?= (int) $sys_load['avg_ms'] ?><span style="font-size:.8rem"> мс</span></div><div class="l">средн. ответ (час)</div></div>
-            <div class="si-card"><div class="n" id="si_max"><?= (int) $sys_load['max_ms_60'] ?><span style="font-size:.8rem"> мс</span></div><div class="l">макс. ответ (час)</div></div>
-        </div>
-        <div class="si-chart" id="si_chart">
-            <?php foreach ($sys_series as $pt): $hh = (int) $pt['hits']; $hs = min($hh, (int) $pt['sub']); $hpx = $hh > 0 ? max(3, (int) round($hh / $si_max * 108)) : 2; $spx = $hh > 0 ? (int) round($hpx * $hs / $hh) : 0; $bpx = $hpx - $spx; ?>
-            <div class="si-bar2<?= $hh === 0 ? ' zero' : '' ?>" style="height:<?= $hpx ?>px" title="<?= h(date('H:i', (int) $pt['ts'])) ?> · подписка <?= $hs ?> · краулеры <?= $hh - $hs ?> · всего <?= $hh ?> · <?= (int) $pt['ms'] ?> мс"><div class="seg-bot" style="height:<?= $bpx ?>px"></div><div class="seg-sub" style="height:<?= $spx ?>px"></div></div>
-            <?php endforeach; ?>
-        </div>
-        <div class="si-chart-x"><span>−60 мин</span><span>сейчас</span></div>
     </div>
-
-    <div class="card">
-        <div class="loghead">
-            <h2>Аномальные пики нагрузки</h2>
-            <div class="loghead-r">
-                <form method="post" onsubmit="return uiConfirmForm(this,'Очистить лог пиков нагрузки?')" style="margin:0">
-                    <input type="hidden" name="csrf" value="<?= h($token) ?>">
-                    <input type="hidden" name="action" value="clear_peaks">
-                    <button class="danger" type="submit">🧹 Очистить</button>
-                </form>
-            </div>
-        </div>
-        <p class="muted">Минута помечается пиком, если запросов в неё ≥ <b><?= h(number_format($si_factor, 1)) ?>×</b> от средней за предыдущий час И не меньше порога <b><?= (int) $si_floor ?></b> запр/мин.</p>
-        <form method="post" style="display:flex;gap:1rem;flex-wrap:wrap;align-items:flex-end;margin-bottom:1rem">
-            <input type="hidden" name="csrf" value="<?= h($token) ?>">
-            <input type="hidden" name="action" value="save_metrics_cfg">
-            <div><label style="display:block;font-size:.8rem;font-weight:600;margin-bottom:.3rem">Множитель (×средней)</label><input type="number" step="0.1" min="1.5" name="metrics_peak_factor" value="<?= h(number_format($si_factor, 1)) ?>" style="width:120px;padding:.5rem;border:1px solid var(--line);border-radius:8px;background:var(--bg2);color:var(--text)"></div>
-            <div><label style="display:block;font-size:.8rem;font-weight:600;margin-bottom:.3rem">Мин. порог, запр/мин</label><input type="number" min="5" name="metrics_peak_floor" value="<?= (int) $si_floor ?>" style="width:120px;padding:.5rem;border:1px solid var(--line);border-radius:8px;background:var(--bg2);color:var(--text)"></div>
-            <button class="btn" type="submit" style="width:auto;padding:.55rem 1.1rem">Сохранить</button>
-        </form>
-        <table class="logtbl">
-            <thead><tr><th>Время</th><th>Запросов/мин</th><th>Базовая линия</th><th>Макс. ответ</th><th>Пик памяти</th></tr></thead>
-            <tbody id="si_peaks">
-            <?php foreach ($sys_peaks as $pk): ?>
-            <tr>
-                <td class="muted si-pk-ts" data-ts="<?= (int) $pk['minute_ts'] ?>"><?= h(date('Y-m-d H:i', (int) $pk['minute_ts'])) ?></td>
-                <td><span class="tag error"><?= (int) $pk['hits'] ?></span></td>
-                <td class="muted"><?= (int) $pk['baseline'] ?></td>
-                <td class="muted"><?= (int) $pk['dur_ms_max'] ?> мс</td>
-                <td class="muted"><?= h(metrics_fmt_bytes((int) $pk['mem_max'])) ?></td>
-            </tr>
-            <?php endforeach; ?>
-            <?php if (!$sys_peaks): ?><tr><td colspan="5" class="muted">Пиков не зафиксировано</td></tr><?php endif; ?>
-            </tbody>
-        </table>
     </div>
 
     <script>
     var SI_MAXBASE = <?= (int) $si_max ?>;
+    var SI_PANEL = null;
     function siFmtBytes(n){n=Number(n)||0;var u=['B','KB','MB','GB','TB'],i=0;while(n>=1024&&i<u.length-1){n/=1024;i++;}return (i===0?Math.round(n):(n>=100?Math.round(n):Math.round(n*10)/10))+' '+u[i];}
     function siLocal(ep,withDate){ep=parseInt(ep,10);if(!ep)return '';var d=new Date(ep*1000);function p(n){return(n<10?'0':'')+n;}var t=p(d.getHours())+':'+p(d.getMinutes());return withDate?(d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate())+' '+t):t;}
     function siEsc(s){var d=document.createElement('div');d.textContent=(s==null?'':s);return d.innerHTML;}
+    function siPnum(v){return (v===null||v===undefined)?'—':Number(v).toLocaleString('ru-RU');}
     function siChart(series){
         var box=document.getElementById('si_chart'); if(!box||!series) return;
         var mx=1; series.forEach(function(p){ if(p.hits>mx) mx=p.hits; });
@@ -152,7 +222,7 @@ $si_floor  = metrics_peak_floor();
                 var L=d.load||{};
                 siSet('si_m1',L.m1); siSet('si_m5',L.m5); siSet('si_m60',L.m60); siSet('si_today',L.today);
                 siBreak('si_m1b',L.m1,L.m1_sub); siBreak('si_m5b',L.m5,L.m5_sub); siBreak('si_m60b',L.m60,L.m60_sub); siBreak('si_todayb',L.today,L.today_sub);
-                siSet('si_rpm',(L.rpm_60||0).toFixed(1));
+                siSet('si_rpm',(L.rpm_60||0).toFixed(1)); siSet('k_rpm',(L.rpm_60||0).toFixed(1));
                 var avg=document.getElementById('si_avg'); if(avg) avg.innerHTML=(L.avg_ms||0)+'<span style="font-size:.8rem"> мс</span>';
                 var mxc=document.getElementById('si_max'); if(mxc) mxc.innerHTML=(L.max_ms_60||0)+'<span style="font-size:.8rem"> мс</span>';
                 siChart(d.series); siPeaks(d.peaks);
@@ -162,7 +232,30 @@ $si_floor  = metrics_peak_floor();
             if(a) a.textContent='· обновлено в '+new Date().toLocaleTimeString();
         }).catch(function(){ if(a) a.textContent='· ошибка обновления'; });
     }
+    function siPanelApply(s){
+        if(!s) return;
+        var u=s.users||{}, o=s.online||{}, n=s.nodes||{};
+        siSet('k_online',siPnum(o.now)); siSet('k_active',siPnum(u.ACTIVE));
+        siSet('k_nodes_on', n.online==null?'—':n.online); siSet('k_nodes_tot', n.total==null?'—':n.total);
+        siSet('p_active',siPnum(u.ACTIVE)); siSet('p_limited',siPnum(u.LIMITED)); siSet('p_expired',siPnum(u.EXPIRED)); siSet('p_disabled',siPnum(u.DISABLED)); siSet('p_total',siPnum(u.total));
+        siSet('p_on_now',siPnum(o.now)); siSet('p_on_day',siPnum(o.day)); siSet('p_on_week',siPnum(o.week));
+        siSet('p_nodes_on', n.online==null?'—':n.online); siSet('p_nodes_tot', n.total==null?'—':n.total);
+        var st=document.getElementById('p_status');
+        if(st){ if(s.error){ st.textContent='· панель недоступна: '+s.error; } else { st.textContent='· обновлено '+(s.age||0)+' с назад'; } }
+    }
+    function siPanelFetch(force){
+        var st=document.getElementById('p_status'); if(force&&st) st.textContent='· обновление…';
+        fetch('?ajax=panelstats'+(force?'&force=1':'')).then(function(r){return r.json();}).then(function(d){ if(d&&d.stats){ SI_PANEL=d.stats; siPanelApply(d.stats); } }).catch(function(){ if(st) st.textContent='· ошибка запроса'; });
+    }
+    function siSeg(name){
+        var btns=document.querySelectorAll('#siSeg button'); for(var i=0;i<btns.length;i++) btns[i].classList.toggle('on',btns[i].getAttribute('data-seg')===name);
+        var pans=document.querySelectorAll('.si-seg-panel'); for(var j=0;j<pans.length;j++) pans[j].hidden=(pans[j].getAttribute('data-panel')!==name);
+        try{document.cookie='si_seg='+name+';path=/;max-age=31536000;samesite=Lax';}catch(e){}
+        if(name==='panel' && (!SI_PANEL || (SI_PANEL.age||0)>30)) siPanelFetch(false);
+    }
+    (function(){var b=document.querySelectorAll('#siSeg button'); for(var i=0;i<b.length;i++) b[i].addEventListener('click',function(){siSeg(this.getAttribute('data-seg'));});})();
     document.querySelectorAll('.si-pk-ts[data-ts]').forEach(function(td){var v=siLocal(td.getAttribute('data-ts'),true);if(v)td.textContent=v;});
-    setInterval(function(){ if(!document.hidden) siRefresh(); }, 15000);
+    siPanelFetch(false);
+    setInterval(function(){ if(document.hidden) return; siRefresh(); var on=document.querySelector('#siSeg button.on'); if(on&&on.getAttribute('data-seg')==='panel') siPanelFetch(false); }, 15000);
     document.addEventListener('visibilitychange',function(){ if(!document.hidden) siRefresh(); });
     </script>

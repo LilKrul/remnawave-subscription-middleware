@@ -34,7 +34,8 @@ INSERT INTO settings (k, v) VALUES
     ('addsub_label',          ''),
     ('addsub_stub_on_traffic','1'),
     ('addsub_stub_label',     'Трафик доп-сервера истёк'),
-    ('addsub_merge_xray',     '0')
+    ('addsub_merge_xray',     '0'),
+    ('squad_xray_json_inject','0')
 ON CONFLICT(k) DO NOTHING;
 
 CREATE TABLE IF NOT EXISTS overrides (
@@ -98,6 +99,7 @@ CREATE TABLE IF NOT EXISTS grace_users (
     orig_traffic_strategy TEXT NOT NULL DEFAULT 'NO_RESET',
     orig_expire TEXT NULL,
     orig_hwid_limit INTEGER NULL,
+    orig_external_squad TEXT NULL,
     grace_until INTEGER NOT NULL DEFAULT 0,
     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );

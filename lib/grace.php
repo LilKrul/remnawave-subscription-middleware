@@ -11,7 +11,7 @@ function ensure_grace_table() {
                 short_uuid VARCHAR(191) NOT NULL, user_uuid VARCHAR(191) NOT NULL, username VARCHAR(191) NULL,
                 orig_squads MEDIUMTEXT NULL, orig_traffic_bytes BIGINT NOT NULL DEFAULT 0,
                 orig_traffic_strategy VARCHAR(32) NOT NULL DEFAULT 'NO_RESET', orig_expire VARCHAR(40) NULL,
-                orig_hwid_limit INT NULL, grace_until INT NOT NULL DEFAULT 0,
+                orig_hwid_limit INT NULL, orig_external_squad VARCHAR(191) NULL, grace_until INT NOT NULL DEFAULT 0,
                 created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY (short_uuid)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
         } else {
@@ -19,14 +19,23 @@ function ensure_grace_table() {
                 short_uuid TEXT NOT NULL PRIMARY KEY, user_uuid TEXT NOT NULL, username TEXT NULL,
                 orig_squads TEXT NULL, orig_traffic_bytes INTEGER NOT NULL DEFAULT 0,
                 orig_traffic_strategy TEXT NOT NULL DEFAULT 'NO_RESET', orig_expire TEXT NULL,
-                orig_hwid_limit INTEGER NULL, grace_until INTEGER NOT NULL DEFAULT 0,
+                orig_hwid_limit INTEGER NULL, orig_external_squad TEXT NULL, grace_until INTEGER NOT NULL DEFAULT 0,
                 created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
             )");
         }
     } catch (Throwable $e) { error_log('submw grace table: ' . $e->getMessage()); }
+    try { $p->exec('ALTER TABLE grace_users ADD COLUMN orig_external_squad ' . (db_driver() === 'mysql' ? 'VARCHAR(191)' : 'TEXT') . ' NULL'); } catch (Throwable $e) {}
 }
 
 function grace_iso($ts) { return gmdate('Y-m-d\TH:i:s.000\Z', (int) $ts); }
+
+function grace_announce_normalize($raw) {
+    $raw   = str_replace(["\r\n", "\r"], "\n", (string) $raw);
+    $lines = array_map(fn($l) => trim($l), explode("\n", $raw));
+    while ($lines && $lines[0] === '') array_shift($lines);
+    while ($lines && end($lines) === '') array_pop($lines);
+    return mb_substr(implode("\n", $lines), 0, 200);
+}
 
 function grace_find($short) {
     ensure_grace_table();
@@ -45,17 +54,17 @@ function grace_delete($short) {
     catch (Throwable $e) {}
 }
 
-function grace_save($short, $uuid, $username, array $squads, $bytes, $strategy, $orig_expire, $hwid_limit, $grace_until) {
+function grace_save($short, $uuid, $username, array $squads, $bytes, $strategy, $orig_expire, $hwid_limit, $orig_external_squad, $grace_until) {
     ensure_grace_table();
     if (!($p = db())) return;
     try {
-        $cols = "INSERT INTO grace_users (short_uuid, user_uuid, username, orig_squads, orig_traffic_bytes, orig_traffic_strategy, orig_expire, orig_hwid_limit, grace_until) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) ";
+        $cols = "INSERT INTO grace_users (short_uuid, user_uuid, username, orig_squads, orig_traffic_bytes, orig_traffic_strategy, orig_expire, orig_hwid_limit, orig_external_squad, grace_until) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ";
         if (db_driver() === 'mysql') {
-            $st = $p->prepare($cols . "ON DUPLICATE KEY UPDATE user_uuid=VALUES(user_uuid), username=VALUES(username), orig_squads=VALUES(orig_squads), orig_traffic_bytes=VALUES(orig_traffic_bytes), orig_traffic_strategy=VALUES(orig_traffic_strategy), orig_expire=VALUES(orig_expire), orig_hwid_limit=VALUES(orig_hwid_limit), grace_until=VALUES(grace_until)");
+            $st = $p->prepare($cols . "ON DUPLICATE KEY UPDATE user_uuid=VALUES(user_uuid), username=VALUES(username), orig_squads=VALUES(orig_squads), orig_traffic_bytes=VALUES(orig_traffic_bytes), orig_traffic_strategy=VALUES(orig_traffic_strategy), orig_expire=VALUES(orig_expire), orig_hwid_limit=VALUES(orig_hwid_limit), orig_external_squad=VALUES(orig_external_squad), grace_until=VALUES(grace_until)");
         } else {
-            $st = $p->prepare($cols . "ON CONFLICT(short_uuid) DO UPDATE SET user_uuid=excluded.user_uuid, username=excluded.username, orig_squads=excluded.orig_squads, orig_traffic_bytes=excluded.orig_traffic_bytes, orig_traffic_strategy=excluded.orig_traffic_strategy, orig_expire=excluded.orig_expire, orig_hwid_limit=excluded.orig_hwid_limit, grace_until=excluded.grace_until");
+            $st = $p->prepare($cols . "ON CONFLICT(short_uuid) DO UPDATE SET user_uuid=excluded.user_uuid, username=excluded.username, orig_squads=excluded.orig_squads, orig_traffic_bytes=excluded.orig_traffic_bytes, orig_traffic_strategy=excluded.orig_traffic_strategy, orig_expire=excluded.orig_expire, orig_hwid_limit=excluded.orig_hwid_limit, orig_external_squad=excluded.orig_external_squad, grace_until=excluded.grace_until");
         }
-        $st->execute([$short, $uuid, $username, json_encode(array_values($squads)), (int) $bytes, (string) $strategy, (string) $orig_expire, ($hwid_limit === null ? null : (int) $hwid_limit), (int) $grace_until]);
+        $st->execute([$short, $uuid, $username, json_encode(array_values($squads)), (int) $bytes, (string) $strategy, (string) $orig_expire, ($hwid_limit === null ? null : (int) $hwid_limit), ($orig_external_squad === null ? null : (string) $orig_external_squad), (int) $grace_until]);
     } catch (Throwable $e) { error_log('submw grace save: ' . $e->getMessage()); }
 }
 
@@ -84,6 +93,9 @@ function grace_restore($existing) {
         'hwidDeviceLimit'       => ($existing['orig_hwid_limit'] === null ? null : (int) $existing['orig_hwid_limit']),
     ];
     if (!empty($existing['orig_expire'])) $full['expireAt'] = (string) $existing['orig_expire'];
+    if (array_key_exists('orig_external_squad', $existing) && $existing['orig_external_squad'] !== null) {
+        $full['externalSquadUuid'] = ($existing['orig_external_squad'] === '' ? null : (string) $existing['orig_external_squad']);
+    }
 
     $e = '';
     if (remnawave_update_user($uuid, $full, $e)) { grace_delete($short); return true; }
@@ -128,9 +140,10 @@ function grace_on_expired($short, $username = null) {
     $strategy    = (string) ($u['trafficLimitStrategy'] ?? 'NO_RESET');
     $orig_expire = (string) ($u['expireAt'] ?? '');
     $hwid_orig   = array_key_exists('hwidDeviceLimit', $u) ? $u['hwidDeviceLimit'] : null;
+    $ext_orig    = grace_external_active() ? (string) ($u['externalSquadUuid'] ?? '') : null;
     $grace_until = time() + grace_days() * 86400;
 
-    grace_save($short, $uuid, $username, $squads, $bytes, $strategy, $orig_expire, $hwid_orig, $grace_until);
+    grace_save($short, $uuid, $username, $squads, $bytes, $strategy, $orig_expire, $hwid_orig, $ext_orig, $grace_until);
 
     if (grace_traffic_bytes() > 0) {
         $re = '';
@@ -147,6 +160,7 @@ function grace_on_expired($short, $username = null) {
     ];
     $gh = grace_hwid_limit_raw();
     if ($gh !== '') $patch['hwidDeviceLimit'] = (int) $gh;
+    if (grace_external_active()) $patch['externalSquadUuid'] = grace_external_squad_uuid();
     $e = '';
     $ok = remnawave_update_user($uuid, $patch, $e);
     if (!$ok) { grace_delete($short); error_log('submw grace start patch: ' . $e); return 'grace_err'; }
@@ -164,15 +178,19 @@ function grace_on_renew($short, $new_expire_str) {
     $squads = json_decode((string) $existing['orig_squads'], true);
     if (!is_array($squads)) $squads = [];
     $corrected = time() + ($new_ts - $grace_until);
-    $e = '';
-    $ok = remnawave_update_user((string) $existing['user_uuid'], [
+    $patch = [
         'status'                => 'ACTIVE',
         'activeInternalSquads'  => $squads,
         'trafficLimitBytes'     => (int) $existing['orig_traffic_bytes'],
         'trafficLimitStrategy'  => (string) $existing['orig_traffic_strategy'],
         'hwidDeviceLimit'       => ($existing['orig_hwid_limit'] === null ? null : (int) $existing['orig_hwid_limit']),
         'expireAt'              => grace_iso($corrected),
-    ], $e);
+    ];
+    if (array_key_exists('orig_external_squad', $existing) && $existing['orig_external_squad'] !== null) {
+        $patch['externalSquadUuid'] = ($existing['orig_external_squad'] === '' ? null : (string) $existing['orig_external_squad']);
+    }
+    $e = '';
+    $ok = remnawave_update_user((string) $existing['user_uuid'], $patch, $e);
     if (!$ok) { error_log('submw grace renew: ' . $e); return false; }
     grace_delete($short);
     return true;

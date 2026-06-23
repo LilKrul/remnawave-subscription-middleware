@@ -1,12 +1,16 @@
-    <div class="card">
-        <h2 style="margin-top:0;font-size:1rem">Как включить вебхук в Remnawave <button type="button" class="qh" onclick="help('webhook_env')" aria-label="Справка">?</button></h2>
-        <p class="muted">Добавьте эти строки в <code>.env</code> панели и перезапустите её:</p>
-        <pre>WEBHOOK_ENABLED=true
+    <section class="<?= coll_cls('wh_env') ?>" data-coll="wh_env">
+        <button type="button" class="coll-head" onclick="collToggle(this)"><span>Как включить вебхук в Remnawave</span>
+            <span class="coll-hr"><svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></span>
+        </button>
+        <div class="coll-body">
+            <p class="muted">Добавьте эти строки в <code>.env</code> панели и перезапустите её: <button type="button" class="qh" onclick="help('webhook_env')" aria-label="Справка">?</button></p>
+            <pre>WEBHOOK_ENABLED=true
 WEBHOOK_URL=<?= h($wh_url) ?>
 
 WEBHOOK_SECRET_HEADER=<?= h(webhook_secret() ?: '<секрет из «Подключения»>') ?></pre>
-        <p class="muted">После перезапуска события появятся в «Логе вебхуков» с подписью <span class="tag normal">ok</span>.</p>
-    </div>
+            <p class="muted">После перезапуска события появятся в «Логе вебхуков» с подписью <span class="tag normal">ok</span>.</p>
+        </div>
+    </section>
 
     <style>
         .fwd-row{display:grid;grid-template-columns:1fr 2fr 1.4fr auto auto;gap:.6rem;align-items:center;margin-bottom:.55rem}
@@ -28,13 +32,13 @@ WEBHOOK_SECRET_HEADER=<?= h(webhook_secret() ?: '<секрет из «Подкл
     <div class="card">
         <h2 style="margin-top:0;font-size:1rem">Раздвоение вебхука («тройник») <button type="button" class="qh" onclick="help('forward')" aria-label="Справка">?</button></h2>
         <p class="muted">Нужен, если адресатам нужны <b>разные секреты</b> или пересылка после обработки прослойкой. Если всем хватает одного секрета — проще перечислить URL-ы через запятую прямо в <code>WEBHOOK_URL</code> панели. Подробнее — по «?». URL прослойки: <code><?= h($wh_url) ?></code>.</p>
-        <form method="post" id="fwdForm">
+        <form method="post" id="fwdForm" data-autosave>
             <input type="hidden" name="csrf" value="<?= h($token) ?>">
             <input type="hidden" name="action" value="save_forward">
             <input type="hidden" name="forward_targets_json" id="fwd_json" value="">
             <div class="set-row">
                 <div class="set-info"><div class="set-t">Включить пересылку</div><div class="set-d">Пересылать входящие вебхуки адресатам из списка ниже.</div></div>
-                <label class="switch"><input type="checkbox" name="forward_enabled" <?= forward_enabled()?'checked':'' ?>><span class="sl"></span></label>
+                <label class="switch"><input type="checkbox" name="forward_enabled" data-reload <?= forward_enabled()?'checked':'' ?>><span class="sl"></span></label>
             </div>
             <div class="set-row">
                 <div class="set-info"><div class="set-t">Таймаут на адрес, сек</div><div class="set-d">Сколько ждать ответа каждого адресата.</div></div>
@@ -55,7 +59,7 @@ WEBHOOK_SECRET_HEADER=<?= h(webhook_secret() ?: '<секрет из «Подкл
         </form>
     </div>
 
-    <section class="coll collapsed" data-coll="next_branding">
+    <section class="<?= coll_cls('next_branding', true) ?>" data-coll="next_branding">
         <button type="button" class="coll-head" onclick="collToggle(this)">← Вернуться в Брендинг
             <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
         </button>

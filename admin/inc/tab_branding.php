@@ -3,7 +3,7 @@
         <p class="muted">Имя и лого тянутся из API панели → идут в название, лого и фавикон админки. Сейчас: «<?= h($brand['name']) ?>»<?= $brand_icon !== '' ? ', лого закешировано' : ', лого не задано' ?>.</p>
         <?php $bc_dbg = json_decode((string) setting('brand_cache', '{}'), true); if (!is_array($bc_dbg)) $bc_dbg = []; ?>
         <p class="muted" style="margin-top:.4rem">Из API: имя — <code><?= h(($bc_dbg['name'] ?? '') !== '' ? $bc_dbg['name'] : '(пусто)') ?></code>; URL лого — <code><?= h(($bc_dbg['logo_url'] ?? '') !== '' ? $bc_dbg['logo_url'] : '(не найден)') ?></code>; файл — <code><?= h(($bc_dbg['logo_file'] ?? '') !== '' ? $bc_dbg['logo_file'] : '(нет)') ?></code>.<?php if (($bc_dbg['api_error'] ?? '') !== ''): ?> <b style="color:var(--c-bad-fg)">Ошибка API:</b> <code><?= h($bc_dbg['api_error']) ?></code>.<?php endif; ?></p>
-        <form method="post">
+        <form method="post" data-autosave>
             <input type="hidden" name="csrf" value="<?= h($token) ?>">
             <input type="hidden" name="action" value="save_branding">
             <div class="row">
@@ -47,7 +47,7 @@
             .pv4 .pv-dot{background:#0f766e;border-radius:50%}
             .pv4 .pv-b{background:#0f766e}
         </style>
-        <form method="post">
+        <form method="post" data-autosave>
             <input type="hidden" name="csrf" value="<?= h($token) ?>">
             <input type="hidden" name="action" value="save_landing">
             <div class="lpick">
@@ -64,7 +64,6 @@
                     <div class="pv pv4"><div class="pv-card"><div class="pv-dot"></div><div class="pv-l"></div><div class="pv-l"></div><div class="pv-b"></div></div></div>
                     <div class="nm">Минимализм</div></label>
             </div>
-            <div style="margin-top:.6rem"><button type="submit">💾 Сохранить дизайн</button></div>
         </form>
         <script>document.querySelectorAll('.lpick label').forEach(function(l){l.addEventListener('click',function(){document.querySelectorAll('.lpick label').forEach(function(x){x.classList.remove('sel');});l.classList.add('sel');});});</script>
     </div>

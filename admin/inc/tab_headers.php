@@ -4,7 +4,7 @@
     <div class="card">
         <h2 style="margin-top:0;font-size:1rem">Активные заголовки</h2>
         <p class="muted">Эти заголовки прослойка отдаёт в подписке. Впишите значение и оставьте включёнными. Пустые и выключенные строки не отправляются.</p>
-        <form method="post" id="ahForm">
+        <form method="post" id="ahForm" data-autosave>
             <input type="hidden" name="csrf" value="<?= h($token) ?>">
             <input type="hidden" name="action" value="save_app_headers">
             <input type="hidden" name="app_headers_json" id="ah_json" value="">

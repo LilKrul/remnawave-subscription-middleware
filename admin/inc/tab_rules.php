@@ -2,7 +2,7 @@
         Отдавайте заголовки клиентам подписки. Правило <b>«Все клиенты»</b> уходит всем; правило под конкретное приложение <b>добавляет</b> свои заголовки поверх для него. Заголовки выбираются из списка с описанием — вписывать ничего не нужно.
     </div>
 
-    <section class="coll collapsed" data-coll="rules_help">
+    <section class="<?= coll_cls('rules_help', true) ?>" data-coll="rules_help">
         <button type="button" class="coll-head" onclick="collToggle(this)"><span>❓ Как это работает (простым языком)</span>
             <span class="coll-hr"><svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></span>
         </button>
@@ -14,7 +14,7 @@
         </div>
     </section>
 
-    <section class="coll collapsed" data-coll="rules_happ_prem">
+    <section class="<?= coll_cls('rules_happ_prem', true) ?>" data-coll="rules_happ_prem">
         <button type="button" class="coll-head" onclick="collToggle(this)"><span>💎 Как подключить Happ Premium</span>
             <span class="coll-hr"><svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></span>
         </button>

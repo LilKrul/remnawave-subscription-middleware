@@ -217,6 +217,7 @@ function csrf_ok() { return isset($_POST['csrf'], $_SESSION['csrf']) && hash_equ
 function is_auth() { return !empty($_SESSION['auth']); }
 function flash($m) { $_SESSION['flash'] = $m; }
 function take_flash() { $m = $_SESSION['flash'] ?? null; unset($_SESSION['flash']); return $m; }
+function form_saved($tab) { if (!empty($_POST['xhr'])) { header('Content-Type: application/json; charset=utf-8'); echo json_encode(['ok' => true, 'msg' => take_flash()], JSON_UNESCAPED_UNICODE); exit(); } header('Location: index.php?tab=' . $tab); exit(); }
 
 if (isset($_GET['logout'])) {
     $_SESSION = []; session_destroy();
@@ -349,6 +350,7 @@ if (isset($_GET['ajax']) && is_auth()) {
                 }
             } catch (Throwable $e) {}
         }
+        $rows = reqlog_collapse($rows);
         echo json_encode(['ok' => true, 'rows' => $rows, 'stats' => reqlog_today_stats()], JSON_UNESCAPED_UNICODE);
         exit();
     }
@@ -362,6 +364,13 @@ if (isset($_GET['ajax']) && is_auth()) {
             'sys'    => ['load' => metrics_system_info()['load'], 'cores' => metrics_system_info()['cores'], 'mem_peak' => memory_get_peak_usage(true)],
             'db'     => ['size' => metrics_db_info()['size']],
         ], JSON_UNESCAPED_UNICODE);
+        exit();
+    }
+
+    if ($a === 'panelstats') {
+        $perr = '';
+        $age = !empty($_GET['force']) ? 0 : 45;
+        echo json_encode(['ok' => true, 'stats' => remnawave_system_stats($age, $perr)], JSON_UNESCAPED_UNICODE);
         exit();
     }
 
@@ -460,6 +469,42 @@ if (isset($_GET['ajax']) && is_auth()) {
         exit();
     }
 
+    if ($a === 'pool_sizing') {
+        $perr = ''; $pwarn = ''; $ptot = null;
+        $rows = wglease_sizing($perr, $pwarn, $ptot);
+        if ($perr === '') wglease_sizing_save($rows, $ptot);
+        $sc = wglease_sizing_cached();
+        echo json_encode(['ok' => $perr === '', 'error' => $perr, 'warn' => $pwarn, 'rows' => $rows, 'ts' => $sc['ts'], 'totals' => $sc['totals']], JSON_UNESCAPED_UNICODE);
+        exit();
+    }
+
+    if ($a === 'pool_user') {
+        $q = trim($_GET['q'] ?? '');
+        $pe = '';
+        $u = $q !== '' ? remnawave_get_user_by_short($q, $pe) : null;
+        if (!is_array($u)) { $pe2 = ''; $u = $q !== '' ? remnawave_get_user_by_username($q, $pe2) : null; }
+        if (!is_array($u)) { echo json_encode(['ok' => false, 'error' => 'Пользователь не найден']); exit(); }
+        $uuid = (string) ($u['uuid'] ?? '');
+        $devs = [];
+        if ($uuid !== '') { $de = ''; $devs = remnawave_user_hwids($uuid, $de); }
+        $sq = [];
+        foreach (($u['activeInternalSquads'] ?? []) as $s) if (is_array($s)) $sq[] = ['uuid' => (string) ($s['uuid'] ?? ''), 'name' => (string) ($s['name'] ?? '')];
+        $cu_su = (string) ($u['shortUuid'] ?? '');
+        if ($cu_su !== '') {
+            $cu_d = [];
+            foreach ($devs as $cu_dv) { if (!is_array($cu_dv)) continue; $cu_h = (string) ($cu_dv['hwid'] ?? ''); if ($cu_h !== '') $cu_d[$cu_h] = ['p' => (string) ($cu_dv['platform'] ?? ''), 'm' => (string) ($cu_dv['deviceModel'] ?? '')]; }
+            wglease_user_cache_put($cu_su, ['u' => (string) ($u['username'] ?? ''), 'lim' => $u['hwidDeviceLimit'] ?? null, 'd' => $cu_d]);
+        }
+        echo json_encode(['ok' => true, 'user' => [
+            'uuid'            => $uuid,
+            'shortUuid'       => (string) ($u['shortUuid'] ?? ''),
+            'username'        => (string) ($u['username'] ?? ''),
+            'hwidDeviceLimit' => $u['hwidDeviceLimit'] ?? null,
+            'squads'          => $sq,
+        ], 'devices' => $devs], JSON_UNESCAPED_UNICODE);
+        exit();
+    }
+
     http_response_code(400);
     echo json_encode(['ok' => false, 'error' => 'unknown ajax']);
     exit();
@@ -473,7 +518,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && is_auth()) {
         $split = fn($v) => array_values(array_filter(array_map('trim', explode("\n", str_replace("\r", '', (string) $v))), fn($s) => $s !== ''));
         set_setting('blocked_remarks', json_encode($split($_POST['blocked_remarks'] ?? ''), JSON_UNESCAPED_UNICODE));
         flash('Настройки HWID-блокировки сохранены');
-        header('Location: index.php?tab=hwid'); exit();
+        form_saved('hwid');
     }
 
     if ($action === 'save_grace') {
@@ -486,8 +531,11 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && is_auth()) {
         $gh = trim((string) ($_POST['grace_hwid_limit'] ?? ''));
         set_setting('grace_hwid_limit', $gh === '' ? '' : (string) max(0, (int) $gh));
         set_setting('grace_days', ($_POST['grace_days'] ?? '') === '' ? '' : (string) max(0, (int) $_POST['grace_days']));
+        set_setting('grace_external_enabled', isset($_POST['grace_external_enabled']) ? '1' : '0');
+        set_setting('grace_external_squad_uuid', trim($_POST['grace_external_squad_uuid'] ?? ''));
+        set_setting('grace_announce', grace_announce_normalize($_POST['grace_announce'] ?? ''));
         flash('Настройки грейс-сквада сохранены');
-        header('Location: index.php?tab=subst'); exit();
+        form_saved('subst');
     }
 
     if ($action === 'save_connection') {
@@ -502,8 +550,15 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && is_auth()) {
         set_setting('proxy_timeout', (string) max(5, (int) ($_POST['proxy_timeout'] ?? 30)));
         set_setting('sub_source', ($_POST['sub_source'] ?? 'mirror') === 'panel' ? 'panel' : 'mirror');
         set_setting('subpage_external_url', rtrim(trim($_POST['subpage_external_url'] ?? ''), '/'));
+        set_setting('ua_hwid_parse', isset($_POST['ua_hwid_parse']) ? '1' : '0');
+        $ua_keys = [];
+        foreach ((array) ($_POST['ua_hwid_keys'] ?? []) as $uk) {
+            $uk = strtolower(trim((string) $uk));
+            if (in_array($uk, ua_hwid_keys_all(), true) && !in_array($uk, $ua_keys, true)) $ua_keys[] = $uk;
+        }
+        set_setting('ua_hwid_keys', json_encode($ua_keys ?: ['x-hwid'], JSON_UNESCAPED_SLASHES));
         flash('Настройки подключения сохранены');
-        header('Location: index.php?tab=connection'); exit();
+        form_saved('connection');
     }
 
     if ($action === 'save_branding') {
@@ -512,7 +567,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && is_auth()) {
         $be = '';
         brand_refresh($be);
         flash($be !== '' ? ('Брендинг сохранён. API панели: ' . $be) : 'Брендинг сохранён и обновлён');
-        header('Location: index.php?tab=branding'); exit();
+        form_saved('branding');
     }
 
     if ($action === 'save_forward') {
@@ -536,7 +591,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && is_auth()) {
         set_setting('forward_targets', json_encode($clean, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
         ensure_forward_log();
         flash('Настройки раздвоения сохранены');
-        header('Location: index.php?tab=webhooks'); exit();
+        form_saved('webhooks');
     }
 
     if ($action === 'clear_fwdlog') {
@@ -603,7 +658,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && is_auth()) {
         }
         set_setting('app_headers', json_encode($clean, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
         flash('Заголовки приложений сохранены');
-        header('Location: index.php?tab=headers'); exit();
+        form_saved('headers');
     }
 
     if ($action === 'add_override') {
@@ -637,7 +692,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && is_auth()) {
         set_setting('metrics_peak_factor', (string) ($f >= 1.5 ? $f : 3));
         set_setting('metrics_peak_floor', (string) max(5, (int) ($_POST['metrics_peak_floor'] ?? 30)));
         flash('Пороги детектора пиков сохранены');
-        header('Location: index.php?tab=sysinfo'); exit();
+        form_saved('sysinfo');
     }
 
     if ($action === 'migrate_db') {
@@ -689,14 +744,14 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && is_auth()) {
             $msg .= $wok ? ' · вебхук бота установлен' : (' · вебхук НЕ установлен: ' . $werr);
         }
         flash($msg);
-        header('Location: index.php?tab=chat'); exit();
+        form_saved('chat');
     }
 
     if ($action === 'save_landing') {
         $lp = (int) ($_POST['landing_preset'] ?? 1);
         set_setting('landing_preset', (string) (($lp >= 1 && $lp <= 4) ? $lp : 1));
         flash('Дизайн страницы-заглушки сохранён');
-        header('Location: index.php?tab=branding'); exit();
+        form_saved('branding');
     }
 
     if ($action === 'landing_regen_fp') {
@@ -714,18 +769,73 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && is_auth()) {
         $squads = array_values(array_filter(array_map('strval', (array) ($_POST['squads'] ?? [])), fn($s) => trim($s) !== ''));
         $raw   = (string) ($_POST['raw'] ?? '');
         $name  = trim($_POST['name'] ?? '');
+        $kind  = (($_POST['kind'] ?? 'simple') === 'wg') ? 'wg' : 'simple';
+        $ret   = (($_POST['ret'] ?? '') === 'wg_pool') ? 'wg_pool' : 'squad_configs';
         if (!$squads || $name === '' || trim($raw) === '') {
             flash('Выберите хотя бы один сквад, укажите метку и вставьте конфиг');
         } else {
             $parsed = squadconf_parse_any($raw);
+            $isWg = is_array($parsed) && in_array($parsed['type'] ?? '', ['wireguard', 'amneziawg'], true);
             if (!$parsed['ok']) {
                 flash('Конфиг не распознан: ' . (implode(' ', $parsed['warnings']) ?: 'неизвестный формат'));
+            } elseif ($kind === 'wg' && !$isWg) {
+                flash('Это не WG/AWG — добавьте во вкладке «Доп. конфиги»');
+            } elseif ($kind === 'simple' && $isWg) {
+                flash('Это WG/AWG — добавляйте во вкладке «WG / AWG»');
             } else {
                 squadconf_add($squads, $parsed['type'], $name, $raw, json_encode($parsed, JSON_UNESCAPED_UNICODE));
                 flash('Конфиг добавлен (' . squadconf_summary($parsed) . ')');
             }
         }
-        header('Location: index.php?tab=squad_configs'); exit();
+        header('Location: index.php?tab=' . $ret); exit();
+    }
+
+    if ($action === 'batch_wg_config') {
+        $squads = array_values(array_filter(array_map('strval', (array) ($_POST['squads'] ?? [])), fn($s) => trim($s) !== ''));
+        $prefix = trim($_POST['label_prefix'] ?? '');
+        $items = [];
+        if (!empty($_FILES['conf_files']) && is_array($_FILES['conf_files']['tmp_name'] ?? null)) {
+            foreach ($_FILES['conf_files']['tmp_name'] as $i => $tmp) {
+                if (!is_string($tmp) || !is_uploaded_file($tmp)) continue;
+                $raw = (string) file_get_contents($tmp);
+                if (trim($raw) === '') continue;
+                $fn  = (string) ($_FILES['conf_files']['name'][$i] ?? '');
+                $lbl = preg_replace('/\.[A-Za-z0-9]+$/', '', $fn);
+                $items[] = [trim((string) $lbl), $raw];
+            }
+        }
+        $fj = json_decode((string) ($_POST['files_json'] ?? ''), true);
+        if (is_array($fj)) {
+            foreach ($fj as $f) {
+                if (!is_array($f)) continue;
+                $raw = (string) ($f['c'] ?? '');
+                if (trim($raw) === '') continue;
+                $lbl = preg_replace('/\.[A-Za-z0-9]+$/', '', (string) ($f['n'] ?? ''));
+                $items[] = [trim((string) $lbl), $raw];
+            }
+        }
+        $rawb = (string) ($_POST['raw_batch'] ?? '');
+        if (trim($rawb) !== '') {
+            foreach (preg_split('/(?=\[Interface\])/i', $rawb) as $blk) {
+                if (trim($blk) !== '') $items[] = ['', $blk];
+            }
+        }
+        if (!$squads || !$items) {
+            flash('Выберите сквад и добавьте файлы или вставьте конфиги');
+        } else {
+            $added = 0; $skipped = 0; $auto = 0;
+            foreach ($items as $it) {
+                [$lbl, $raw] = $it;
+                $parsed = squadconf_parse_any($raw);
+                if (!is_array($parsed) || empty($parsed['ok']) || !in_array($parsed['type'] ?? '', ['wireguard', 'amneziawg'], true)) { $skipped++; continue; }
+                if ($lbl === '') { $auto++; $lbl = (($parsed['type'] === 'amneziawg') ? 'AWG' : 'WG') . ' ' . $auto; }
+                if ($prefix !== '') $lbl = $prefix . ' · ' . $lbl;
+                squadconf_add($squads, $parsed['type'], mb_substr($lbl, 0, 191), $raw, json_encode($parsed, JSON_UNESCAPED_UNICODE));
+                $added++;
+            }
+            flash('Добавлено WG/AWG: ' . $added . ($skipped ? (', пропущено (не WG/AWG или ошибка): ' . $skipped) : ''));
+        }
+        header('Location: index.php?tab=wg_pool'); exit();
     }
 
     if ($action === 'edit_squad_config') {
@@ -744,18 +854,92 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && is_auth()) {
                 flash('Конфиг обновлён (' . squadconf_summary($parsed) . ')');
             }
         }
-        header('Location: index.php?tab=squad_configs'); exit();
+        header('Location: index.php?tab=' . ((($_POST['ret'] ?? '') === 'wg_pool') ? 'wg_pool' : 'squad_configs')); exit();
     }
 
     if ($action === 'del_squad_config') {
         squadconf_delete((int) ($_POST['id'] ?? 0));
         flash('Конфиг удалён');
-        header('Location: index.php?tab=squad_configs'); exit();
+        header('Location: index.php?tab=' . ((($_POST['ret'] ?? '') === 'wg_pool') ? 'wg_pool' : 'squad_configs')); exit();
+    }
+
+    if ($action === 'del_squad_configs') {
+        $ids = array_values(array_filter(array_map('intval', explode(',', (string) ($_POST['ids'] ?? ''))), fn($i) => $i > 0));
+        $n = 0;
+        foreach ($ids as $id) { squadconf_delete($id); $n++; }
+        flash($n ? ('Удалено конфигов: ' . $n) : 'Ничего не выбрано');
+        header('Location: index.php?tab=' . ((($_POST['ret'] ?? '') === 'squad_configs') ? 'squad_configs' : 'wg_pool')); exit();
+    }
+
+    if ($action === 'pool_reset_leases') {
+        $n = wglease_reset_auto();
+        flash('Сброшено авто-выдач: ' . $n . '. Пул переразложится при следующем чтении подписок.');
+        header('Location: index.php?tab=wg_pool'); exit();
+    }
+
+    if ($action === 'pool_free_slot') {
+        $n = wglease_free((int) ($_POST['id'] ?? 0));
+        flash($n ? 'Слот освобождён' : 'Слот уже свободен (или ручная привязка)');
+        header('Location: index.php?tab=wg_pool'); exit();
+    }
+
+    if ($action === 'bulk_edit_param') {
+        $ids = array_values(array_filter(array_map('intval', explode(',', (string) ($_POST['ids'] ?? ''))), fn($i) => $i > 0));
+        $param = (string) ($_POST['param'] ?? '');
+        $value = trim((string) ($_POST['value'] ?? ''));
+        $map = ['mtu' => ['interface', 'MTU', 'int'], 'dns' => ['interface', 'DNS', 'str'], 'keepalive' => ['peer', 'PersistentKeepalive', 'int'], 'allowedips' => ['peer', 'AllowedIPs', 'str']];
+        $n = 0;
+        if (isset($map[$param]) && $ids) {
+            [$sec, $key, $kind] = $map[$param];
+            $val = $kind === 'int' ? ($value === '' ? '' : (string) (int) $value) : $value;
+            foreach (squadconf_by_ids($ids) as $c) {
+                if (!in_array((string) ($c['type'] ?? ''), ['wireguard', 'amneziawg'], true)) continue;
+                $new = conf_set_param((string) $c['raw'], $sec, $key, $val);
+                $pp = squadconf_parse_any($new);
+                if (!is_array($pp) || empty($pp['ok'])) continue;
+                squadconf_update((int) $c['id'], squadconf_squads_of($c), $pp['type'], (string) ($c['name'] ?? ''), $new, json_encode($pp, JSON_UNESCAPED_UNICODE));
+                $n++;
+            }
+        }
+        flash($n ? ('Изменён параметр у конфигов: ' . $n) : 'Ничего не изменено (проверьте параметр и выбор)');
+        header('Location: index.php?tab=wg_pool'); exit();
     }
 
     if ($action === 'toggle_squad_config') {
         squadconf_toggle((int) ($_POST['id'] ?? 0), ($_POST['enabled'] ?? '0') === '1');
-        header('Location: index.php?tab=squad_configs'); exit();
+        header('Location: index.php?tab=' . ((($_POST['ret'] ?? '') === 'wg_pool') ? 'wg_pool' : 'squad_configs')); exit();
+    }
+
+    if ($action === 'save_pool_modes') {
+        $modes = is_array($_POST['pool_mode'] ?? null) ? $_POST['pool_mode'] : [];
+        foreach ($modes as $sq => $m) {
+            $sq = (string) $sq;
+            $old_mode = wglease_mode($sq);
+            wglease_set_mode($sq, (string) $m);
+            if (wglease_mode($sq) !== $old_mode) wglease_clear_pool_auto($sq);
+        }
+        set_setting('wgpool_reclaim_days', (string) max(1, (int) ($_POST['wgpool_reclaim_days'] ?? 14)));
+        flash('Режимы пула сохранены');
+        form_saved('wg_pool');
+    }
+
+    if ($action === 'pool_manual_add') {
+        $cid = (int) ($_POST['config_id'] ?? 0);
+        $su  = trim($_POST['short_uuid'] ?? '');
+        $hw  = trim($_POST['hwid'] ?? '');
+        if ($cid <= 0 || $su === '') {
+            flash('Выберите конфиг и пользователя');
+        } else {
+            [$pok, $perr] = wglease_manual_add($cid, $su, $hw);
+            flash($pok ? 'Конфиг закреплён за пользователем' : ('Не удалось: ' . $perr));
+        }
+        header('Location: index.php?tab=' . ((($_POST['ret'] ?? '') === 'squad_configs') ? 'squad_configs' : 'wg_pool')); exit();
+    }
+
+    if ($action === 'pool_manual_del') {
+        wglease_del((int) ($_POST['id'] ?? 0));
+        flash('Привязка снята');
+        header('Location: index.php?tab=' . ((($_POST['ret'] ?? '') === 'squad_configs') ? 'squad_configs' : 'wg_pool')); exit();
     }
 
     if ($action === 'save_addsub') {
@@ -769,7 +953,13 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && is_auth()) {
         set_setting('addsub_stub_label', $sl);
         set_setting('addsub_merge_xray', isset($_POST['addsub_merge_xray']) ? '1' : '0');
         flash('Настройки слияния подписок сохранены');
-        header('Location: index.php?tab=addsub'); exit();
+        form_saved('addsub');
+    }
+
+    if ($action === 'save_sqcfg_settings') {
+        set_setting('squad_xray_json_inject', isset($_POST['squad_xray_json_inject']) ? '1' : '0');
+        flash('Настройки доп-конфигов сохранены');
+        form_saved('squad_configs');
     }
 }
 
@@ -809,7 +999,7 @@ $panel_headers = []; $panel_headers_err = '';
 if ($tab === 'headers') $panel_headers = remnawave_panel_headers($panel_headers_err);
 
 $reqlog = [];
-if ($db_ok && $tab === 'reqlog') { ensure_reqlog_hwid(); foreach ($pdo->query('SELECT *, ' . sql_epoch('ts') . ' AS ts_epoch FROM request_log WHERE decision <> \'browser\' ORDER BY id DESC LIMIT 300') as $r) $reqlog[] = $r; }
+if ($db_ok && $tab === 'reqlog') { ensure_reqlog_hwid(); foreach ($pdo->query('SELECT *, ' . sql_epoch('ts') . ' AS ts_epoch FROM request_log WHERE decision <> \'browser\' ORDER BY id DESC LIMIT 300') as $r) $reqlog[] = $r; $reqlog = reqlog_collapse($reqlog); }
 $whlog = [];
 $wh_user_cond = "(event LIKE 'user.%' OR short_uuid IS NOT NULL OR username IS NOT NULL)";
 if ($db_ok && $tab === 'whlog') foreach ($pdo->query("SELECT *, " . sql_epoch('ts') . " AS ts_epoch FROM webhook_log WHERE $wh_user_cond ORDER BY id DESC LIMIT 300") as $r) $whlog[] = $r;
@@ -865,22 +1055,47 @@ if ($db_ok && $tab === 'grace_users') {
 
 $blocked_text  = implode("\n", get_blocked_remarks());
 $grace_squads  = []; $grace_squads_err = '';
+$ext_squads    = []; $ext_squads_err = '';
 if ($tab === 'subst' && remnawave_url() !== '' && remnawave_token() !== '') {
     $grace_squads = remnawave_internal_squads($grace_squads_err);
+    $ext_squads   = remnawave_external_squads($ext_squads_err);
 }
 
-$sqcfg_squads = []; $sqcfg_squads_err = ''; $sqcfg_list = []; $sqcfg_names = [];
-if ($tab === 'squad_configs') {
+$sqcfg_squads = []; $sqcfg_squads_err = ''; $sqcfg_names = [];
+$sqcfg_simple = []; $sqcfg_wg = [];
+$sqcfg_modes = []; $sqcfg_stock = []; $sqcfg_free = []; $sqcfg_leases = []; $sqcfg_lease_by_cfg = []; $sqcfg_hwid_plat = []; $sqcfg_dupes = []; $sqcfg_reclaim_days = 14; $sqcfg_sizing = ['rows' => [], 'ts' => 0];
+if ($tab === 'squad_configs' || $tab === 'wg_pool') {
     if (remnawave_url() !== '' && remnawave_token() !== '') $sqcfg_squads = remnawave_internal_squads($sqcfg_squads_err);
     foreach ($sqcfg_squads as $s) $sqcfg_names[$s['uuid']] = $s['name'];
-    $sqcfg_list = squadconf_all();
+    $sqcfg_names['__manual__'] = 'Ручная привязка';
+    foreach (squadconf_all() as $c) {
+        if (in_array((string) ($c['type'] ?? ''), ['wireguard', 'amneziawg'], true)) $sqcfg_wg[] = $c;
+        else $sqcfg_simple[] = $c;
+    }
+    $sqcfg_leases = wglease_list();
+}
+if ($tab === 'wg_pool') {
+    $sqcfg_reclaim_days = wglease_reclaim_days();
+    foreach ($sqcfg_squads as $s) $sqcfg_modes[$s['uuid']] = wglease_mode($s['uuid']);
+    foreach ($sqcfg_leases as $l) $sqcfg_lease_by_cfg[(int) $l['config_id']] = $l;
+    foreach ($sqcfg_wg as $c) {
+        if ((int) $c['enabled'] !== 1) continue;
+        $leased = isset($sqcfg_lease_by_cfg[(int) $c['id']]);
+        foreach (squadconf_squads_of($c) as $sq) {
+            $sqcfg_stock[$sq] = ($sqcfg_stock[$sq] ?? 0) + 1;
+            if (!$leased) $sqcfg_free[$sq] = ($sqcfg_free[$sq] ?? 0) + 1;
+        }
+    }
+    $sqcfg_hwid_plat = wglease_hwid_platforms();
+    $sqcfg_dupes = wglease_dupes();
+    $sqcfg_sizing = wglease_sizing_cached();
 }
 $addsub_list = [];
 if ($tab === 'addsub') $addsub_list = addsub_map_all();
 $mirror        = mirror_domain();
 $wh_url        = ($mirror !== '' ? ('https://' . $mirror . '/webhook.php') : '/webhook.php');
 
-$tab_titles = ['users' => 'Пользователи', 'branding' => 'Брендинг', 'connection' => 'Подключение', 'webhooks' => 'Вебхуки', 'subst' => 'Грейс-сквад для истёкших', 'headers' => 'Заголовки приложений', 'rules' => 'Правила ответа по приложению', 'hwid' => 'HWID — заблокированные', 'overrides' => 'Оверрайды', 'reqlog' => 'Лог запросов', 'whlog' => 'Лог вебхуков · юзеры', 'whlog_other' => 'Лог вебхуков · прочее', 'fwdlog' => 'Лог пересылки', 'grace_users' => 'Грейс-юзеры', 'sysinfo' => 'О системе', 'update' => 'Обновление', 'migrate' => 'Миграция БД', 'chat' => 'Чат поддержки', 'squad_configs' => 'Доп. конфиги по скваду', 'addsub' => 'Слияние подписок'];
+$tab_titles = ['users' => 'Пользователи', 'branding' => 'Брендинг', 'connection' => 'Подключение', 'webhooks' => 'Вебхуки', 'subst' => 'Грейс-сквад для истёкших', 'headers' => 'Заголовки приложений', 'rules' => 'Правила ответа по приложению', 'hwid' => 'HWID — заблокированные', 'overrides' => 'Оверрайды', 'reqlog' => 'Лог запросов', 'whlog' => 'Лог вебхуков · юзеры', 'whlog_other' => 'Лог вебхуков · прочее', 'fwdlog' => 'Лог пересылки', 'grace_users' => 'Грейс-юзеры', 'sysinfo' => 'О системе', 'update' => 'Обновление', 'migrate' => 'Миграция БД', 'chat' => 'Чат поддержки', 'squad_configs' => 'Доп. конфиги (простые)', 'wg_pool' => 'WG / AWG конфиги', 'addsub' => 'Слияние подписок'];
 $tab_title  = $tab_titles[$tab] ?? 'Админка';
 $bc_now = json_decode((string) setting('brand_cache', '{}'), true);
 if (!is_array($bc_now)) $bc_now = [];
@@ -986,6 +1201,7 @@ $nav = [
     'hwid'      => ['HWID', '<rect x="5" y="2" width="14" height="20" rx="2"/><line x1="9" y1="18" x2="15" y2="18"/><path d="M9 6h6M9 9h6"/>'],
     'overrides' => ['Оверрайды', '<path d="M12 3l7 3v5c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6z"/><path d="M9.5 12l1.8 1.8L15 9.8"/>'],
     'squad_configs' => ['Доп. конфиги', '<path d="M4 5h16v4H4z"/><path d="M4 13h16v6H4z"/><path d="M7 16h4"/><circle cx="17" cy="16" r="1"/>'],
+    'wg_pool'   => ['WG / AWG', '<path d="M3 12h3l2-6 4 12 2-6h7"/>'],
     'addsub'    => ['Слияние подписок', '<path d="M8 7a5 5 0 1 0 0 10"/><path d="M16 7a5 5 0 1 1 0 10"/><line x1="8" y1="12" x2="16" y2="12"/>'],
     'reqlog'    => ['Лог запросов', '<line x1="8" y1="6" x2="20" y2="6"/><line x1="8" y1="12" x2="20" y2="12"/><line x1="8" y1="18" x2="20" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/>'],
     'whlog'       => ['Юзер-лог', '<path d="M13 2L3 14h7l-1 8 10-12h-7z"/>'],
@@ -1002,11 +1218,37 @@ $nav = [
 $nav_sections = [
     ['l' => 'Главное',          'coll' => false, 'k' => 'main',   'items' => ['users', 'chat', 'reqlog']],
     ['l' => 'Настройки',        'coll' => true,  'k' => 'set',    'items' => ['connection', 'branding']],
-    ['l' => 'Вебхуки',          'coll' => true,  'k' => 'wh',     'items' => ['webhooks', 'fwdlog', 'whlog', 'whlog_other']],
+    ['l' => 'Вебхуки',          'coll' => true,  'k' => 'wh',     'items' => forward_enabled() ? ['webhooks', 'fwdlog', 'whlog', 'whlog_other'] : ['webhooks', 'whlog', 'whlog_other']],
     ['l' => 'Грейс',            'coll' => true,  'k' => 'grace',  'items' => ['subst', 'grace_users']],
-    ['l' => 'Доступ / подмена', 'coll' => true,  'k' => 'access', 'items' => ['rules', 'hwid', 'overrides', 'squad_configs', 'addsub']],
+    ['l' => 'Доступ / подмена', 'coll' => true,  'k' => 'access', 'items' => ['rules', 'hwid', 'overrides', 'squad_configs', 'wg_pool', 'addsub']],
     ['l' => 'Обслуживание',     'coll' => false, 'k' => 'maint',  'items' => ['sysinfo', 'update', 'migrate']],
 ];
+function submw_ui_cookie() {
+    static $m = null;
+    if ($m !== null) return $m;
+    $m = [];
+    foreach (explode(';', (string) ($_COOKIE['submw_ui'] ?? '')) as $kv) {
+        $kv = trim($kv); if ($kv === '') continue;
+        $p = explode(':', $kv, 2); if (count($p) !== 2) continue;
+        $m[$p[0]] = ($p[1] === '1');
+    }
+    return $m;
+}
+function coll_cls($key, $default_collapsed = false) {
+    $m = submw_ui_cookie();
+    $c = array_key_exists('c_' . $key, $m) ? $m['c_' . $key] : (bool) $default_collapsed;
+    return 'coll' . ($c ? ' collapsed' : '');
+}
+function navacc_cls($key, $active_in) {
+    if ($active_in) return 'navacc';
+    $m = submw_ui_cookie();
+    $closed = array_key_exists('n_' . $key, $m) ? $m['n_' . $key] : true;
+    return 'navacc' . ($closed ? ' closed' : '');
+}
+function pager_cookie_size($store_key, $default = 25) {
+    $v = (int) ($_COOKIE['pgr_' . $store_key] ?? 0);
+    return in_array($v, [25, 50, 100, 200], true) ? $v : $default;
+}
 function nav_link($key, $it, $active, $badge = false) {
     $svg = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' . $it[1] . '</svg>';
     $dot = $badge ? '<span class="nav-dot" title="Доступно обновление"></span>' : '';
@@ -1024,7 +1266,7 @@ function nav_link($key, $it, $active, $badge = false) {
                         <?= nav_link($key, $nav[$key], $tab === $key, $key === 'update' && update_available()) ?>
                     <?php endforeach; ?>
                 <?php else: ?>
-                    <div class="navacc<?= $active_in ? '' : ' closed' ?>" data-acc="<?= h($sec['k']) ?>">
+                    <div class="<?= navacc_cls($sec['k'], $active_in) ?>" data-acc="<?= h($sec['k']) ?>">
                         <button type="button" class="navacc-h" onclick="navAcc(this)">
                             <span><?= h($sec['l']) ?></span>
                             <svg class="navacc-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
@@ -1088,6 +1330,8 @@ function nav_link($key, $it, $active, $badge = false) {
 
 <?php elseif ($tab === 'squad_configs'): ?>
     <?php include __DIR__ . '/inc/tab_squad_configs.php'; ?>
+<?php elseif ($tab === 'wg_pool'): ?>
+    <?php include __DIR__ . '/inc/tab_wg_pool.php'; ?>
 <?php elseif ($tab === 'addsub'): ?>
     <?php include __DIR__ . '/inc/tab_addsub.php'; ?>
 
@@ -1164,6 +1408,7 @@ var HELP={
 'whsecret':{t:'Секрет вебхука',h:'<p>Ключ, которым панель подписывает вебхуки (заголовок <code>X-Remnawave-Signature</code>), а прослойка сверяет подпись.</p><h4>Формат</h4><p>Минимум 32 символа, только <code>a-z A-Z 0-9</code>. Должен совпадать со значением <code>WEBHOOK_SECRET_HEADER</code> в <code>.env</code> панели.</p><h4>Где взять</h4><p>Вы задаёте его сами (например командой <code>openssl rand -hex 32</code>) и прописываете в <code>.env</code> панели. Готовые строки для <code>.env</code> — в разделе «Как включить вебхук в Remnawave». Пусто — не менять сохранённый.</p>'},
 'trust':{t:'Доверять заголовку expire',h:'<p>Заголовок <code>subscription-userinfo: expire=…</code> от origin становится главным арбитром срока подписки.</p><h4>Рекомендуется включить</h4><p>Тогда продление само себя чинит: будущий <code>expire</code> мгновенно снимает флаг истечения, даже если вебхук о продлении потерялся. Выключать стоит только при отладке.</p>'},
 'timeout':{t:'Таймаут проксирования',h:'<p>Сколько секунд прослойка ждёт ответа от origin при запросе подписки, прежде чем вернуть ошибку.</p><p>По умолчанию <code>30</code>. Можно уменьшить, если origin быстрый, или увеличить при медленной сети.</p>'},
+'uahwid':{t:'HWID из User-Agent',h:'<p>Часть клиентов (v2rayNG, Clash) не умеет слать кастомные HTTP-заголовки, но позволяет менять строку User-Agent. При включённой опции прослойка извлекает device-заголовки из User-Agent вида <code>...; x-hwid=значение; x-device-os=Windows)</code> и форвардит их на панель.</p><h4>Приоритет</h4><p>Если настоящий заголовок в запросе есть — берётся он, User-Agent не разбирается. Параметр, которого в строке нет, не отправляется.</p><h4>Ключи</h4><p>Парсятся только отмеченные: <code>x-hwid</code> (идентификатор устройства, влияет на лимит), <code>x-device-os</code>, <code>x-ver-os</code>, <code>x-device-model</code> (метаданные устройства в панели).</p><h4>Риск</h4><p>User-Agent задаётся пользователем вручную, поэтому <code>x-hwid</code> так можно подменить и обойти лимит устройств. HWID здесь — удобство, а не средство защиты. По умолчанию опция выключена.</p>'},
 'branding':{t:'Брендинг сервиса',h:'<p>Имя и логотип берутся автоматически из API панели Remnawave (Настройки кастомизации → <code>brandingSettings</code>: «Название бренда» и «Ссылка на логотип») и кешируются на диск и в БД — идут в название, лого и фавикон админки.</p><h4>Источник</h4><p>Публичный <code>/api/auth/status</code> (работает без прав токена), фолбэк — <code>/api/remnawave-settings</code>.</p><h4>Ручные поля</h4><p>Перебивают авто и независимы: можно задать только имя или только лого — второе останется из панели. Пусто = из API. Кнопка «Сохранить и обновить» заново запрашивает панель и перекачивает лого в кеш.</p>'},
 'webhook_env':{t:'Включение вебхука в .env',h:'<p>UI для вебхуков в панели нет — они включаются в файле <code>.env</code> панели.</p><h4>Что добавить</h4><p><code>WEBHOOK_ENABLED=true</code>, <code>WEBHOOK_URL</code> = адрес этой прослойки (можно несколько через запятую без пробелов), <code>WEBHOOK_SECRET_HEADER</code> = ваш секрет (один на все URL). Затем перезапустите панель.</p><h4>Важно</h4><p>Секрет должен совпадать с полем «Секрет вебхука» в разделе Подключение. После перезапуска события появятся в Логе вебхуков с подписью <b>ok</b>.</p>'},
 'forward':{t:'Раздвоение вебхука (тройник)',h:'<p>Сама панель умеет слать хук на <b>несколько</b> URL — через запятую (без пробелов) в <code>WEBHOOK_URL</code>. Но все они подписываются <b>одним</b> <code>WEBHOOK_SECRET_HEADER</code>.</p><h4>Зачем тогда тройник</h4><p>Он нужен, когда адресатам нужны <b>разные секреты</b> — прослойка переподписывает каждого <b>его</b> ключом в <code>X-Remnawave-Signature</code> (адресат примет пересылку как настоящий хук панели). Или когда пересылать надо <b>после</b> обработки прослойкой (грейс, блокировки и т.п.).</p><h4>Если хватает одного секрета</h4><p>Проще не использовать тройник, а перечислить URL-ы через запятую прямо в панели.</p>'},
@@ -1201,13 +1446,40 @@ if(window.matchMedia){matchMedia('(prefers-color-scheme: dark)').addEventListene
     };
     toastEl && toastEl.addEventListener('click',function(){toastEl.classList.remove('show');});
     var fm=document.getElementById('flashMsg'); if(fm && fm.getAttribute('data-msg')) uiToast(fm.getAttribute('data-msg'));
-    window.collToggle=function(b){var s=b.closest('.coll');if(!s)return;s.classList.toggle('collapsed');if(!/^next_/.test(s.dataset.coll||'')){try{localStorage.setItem('coll_'+s.dataset.coll,s.classList.contains('collapsed')?'1':'0');}catch(e){}}};
-    document.querySelectorAll('.coll').forEach(function(s){if(/^next_/.test(s.dataset.coll||''))return;try{var v=localStorage.getItem('coll_'+s.dataset.coll);if(v==='1')s.classList.add('collapsed');else if(v==='0')s.classList.remove('collapsed');}catch(e){}});
-    window.navAcc=function(b){var s=b.closest('.navacc');if(!s)return;s.classList.toggle('closed');try{localStorage.setItem('nav_'+s.dataset.acc,s.classList.contains('closed')?'1':'0');}catch(e){}};
-    document.querySelectorAll('.navacc').forEach(function(s){
-        if(s.querySelector('a.active')){s.classList.remove('closed');return;}
-        try{var v=localStorage.getItem('nav_'+s.dataset.acc);if(v==='0')s.classList.remove('closed');else if(v==='1')s.classList.add('closed');}catch(e){}
+    document.querySelectorAll('form[data-autosave]').forEach(function(form){
+        var saving=false, queued=false, snap=new WeakMap();
+        function val(el){return el.type==='checkbox'?(el.checked?'1':'0'):el.value;}
+        function setVal(el,v){if(el.type==='checkbox')el.checked=(v==='1');else el.value=v;}
+        function snapAll(){form.querySelectorAll('input,select,textarea').forEach(function(el){snap.set(el,val(el));});}
+        snapAll();
+        function send(changed){
+            if(saving){queued=true;return;}
+            saving=true;
+            var fd=new FormData(form); fd.append('xhr','1');
+            fetch('index.php',{method:'POST',credentials:'same-origin',body:fd})
+                .then(function(r){return r.json();})
+                .then(function(d){
+                    saving=false;
+                    if(!d||!d.ok){if(window.uiToast)uiToast('Не сохранено');if(changed&&snap.has(changed))setVal(changed,snap.get(changed));if(queued){queued=false;send(null);}return;}
+                    if(window.uiToast)uiToast(d.msg||'Сохранено');
+                    snapAll();
+                    if(changed&&changed.hasAttribute&&changed.hasAttribute('data-reload')){setTimeout(function(){location.reload();},450);return;}
+                    if(queued){queued=false;send(null);}
+                })
+                .catch(function(){
+                    saving=false;
+                    if(window.uiToast)uiToast('Ошибка сети — не сохранено');
+                    if(changed&&snap.has(changed))setVal(changed,snap.get(changed));
+                    if(queued){queued=false;send(null);}
+                });
+        }
+        form.addEventListener('change',function(e){var t=e.target;if(t.matches('input[type=checkbox],input[type=radio],select'))send(t);});
+        form.addEventListener('focusout',function(e){var t=e.target;if(!t.matches('input,textarea'))return;if(t.type==='password'||t.type==='checkbox'||t.type==='radio'||t.type==='submit'||t.type==='button')return;if(val(t)===snap.get(t))return;send(t);});
+        form.addEventListener('submit',function(e){e.preventDefault();send(null);});
     });
+    function uiCookieSet(k,v){try{var raw=(document.cookie.match(/(?:^|;\s*)submw_ui=([^;]*)/)||[])[1]||'';var parts=raw?decodeURIComponent(raw).split(';').filter(Boolean):[];var map={};parts.forEach(function(p){var i=p.indexOf(':');if(i>0)map[p.slice(0,i)]=p.slice(i+1);});map[k]=v?'1':'0';var out=Object.keys(map).map(function(x){return x+':'+map[x];}).join(';');document.cookie='submw_ui='+encodeURIComponent(out)+';path=/;max-age=31536000;samesite=Lax';}catch(e){}}
+    window.collToggle=function(b){var s=b.closest('.coll');if(!s)return;s.classList.toggle('collapsed');var k=s.dataset.coll||'';if(k&&!/^next_/.test(k))uiCookieSet('c_'+k,s.classList.contains('collapsed'));};
+    window.navAcc=function(b){var s=b.closest('.navacc');if(!s)return;s.classList.toggle('closed');var k=s.dataset.acc||'';uiCookieSet('n_'+k,s.classList.contains('closed'));};
     document.addEventListener('click',function(e){var app=document.querySelector('.rw-app');if(app&&app.classList.contains('nav-open')&&!e.target.closest('.rw-side')&&!e.target.closest('.navtoggle'))app.classList.remove('nav-open');});
     try{document.cookie='tzoff='+(-new Date().getTimezoneOffset())+';path=/;max-age=31536000;samesite=Lax';}catch(e){}
     ok.addEventListener('click',function(){var f=cb; uiDlgClose(); if(f)f();});

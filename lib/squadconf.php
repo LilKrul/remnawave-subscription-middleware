@@ -51,6 +51,18 @@ function squadconf_squads_of($row) {
     return $u !== '' ? [$u] : [];
 }
 
+function squadconf_by_ids(array $ids) {
+    squadconf_ensure();
+    $ids = array_values(array_unique(array_filter(array_map('intval', $ids), fn($x) => $x > 0)));
+    if (!$ids || !($p = db())) return [];
+    try {
+        $in = implode(',', array_fill(0, count($ids), '?'));
+        $st = $p->prepare("SELECT * FROM squad_configs WHERE id IN ($in)");
+        $st->execute($ids);
+        return $st->fetchAll();
+    } catch (Throwable $e) { return []; }
+}
+
 function squadconf_all() {
     squadconf_ensure();
     if (!($p = db())) return [];
@@ -231,6 +243,8 @@ function awg_to_clash($parsed, $name) {
     if ($dns) $L[] = '    dns: [' . implode(', ', array_map('yaml_q', $dns)) . ']';
     if (!empty($if['MTU'])) $L[] = '    mtu: ' . (int) $if['MTU'];
     $L[] = '    udp: true';
+    $ka = (int) ($pe['PersistentKeepalive'] ?? 25);
+    if ($ka > 0) $L[] = '    persistent-keepalive: ' . $ka;
 
     $opt = [];
     foreach (['Jc' => 'jc', 'Jmin' => 'jmin', 'Jmax' => 'jmax', 'S1' => 's1', 'S2' => 's2', 'S3' => 's3', 'S4' => 's4'] as $src => $dst) {
@@ -401,7 +415,10 @@ function squadconf_inject_base64($body, array $configs) {
     $decoded = base64_decode(trim((string) $body), true);
     if ($decoded === false || $decoded === '') return $body;
     $ua = strtolower((string) ($_SERVER['HTTP_USER_AGENT'] ?? ''));
-    if (strpos($ua, 'v2rayng') !== false || strpos($ua, 'v2rayn') !== false) {
+    $no_amnezia_ua = ['v2rayng', 'v2rayn', 'happ', 'incy'];
+    $no_amnezia = false;
+    foreach ($no_amnezia_ua as $needle) if (strpos($ua, $needle) !== false) { $no_amnezia = true; break; }
+    if ($no_amnezia) {
         $scheme = 'wireguard';
     } else {
         $scheme = (strpos($decoded, 'wireguard://') !== false && strpos($decoded, 'wg://') === false) ? 'wireguard' : 'wg';
@@ -471,12 +488,13 @@ function squadconf_is_singbox($obj) {
 }
 
 function squadconf_inject_singbox($body, array $configs) {
-    $obj = json_decode((string) $body, true);
-    if (!squadconf_is_singbox($obj)) return $body;
+    if (!squadconf_is_singbox(json_decode((string) $body, true))) return $body;
+    $obj = json_decode((string) $body);
+    if (!is_object($obj) || !isset($obj->outbounds) || !is_array($obj->outbounds)) return $body;
     $existing = [];
-    foreach ($obj['outbounds'] as $o) if (is_array($o) && isset($o['tag'])) $existing[] = (string) $o['tag'];
-    if (isset($obj['endpoints']) && is_array($obj['endpoints'])) {
-        foreach ($obj['endpoints'] as $e) if (is_array($e) && isset($e['tag'])) $existing[] = (string) $e['tag'];
+    foreach ($obj->outbounds as $o) if (is_object($o) && isset($o->tag)) $existing[] = (string) $o->tag;
+    if (isset($obj->endpoints) && is_array($obj->endpoints)) {
+        foreach ($obj->endpoints as $e) if (is_object($e) && isset($e->tag)) $existing[] = (string) $e->tag;
     }
     $added = []; $names = [];
     foreach ($configs as $c) {
@@ -490,24 +508,60 @@ function squadconf_inject_singbox($body, array $configs) {
         if ($t === 'vless') {
             $ob = vless_to_singbox($pn, $nm);
             if (!$ob) continue;
-            $obj['outbounds'][] = $ob;
+            $obj->outbounds[] = $ob;
         } else {
             $ep = squadconf_singbox_endpoint($pn, $nm);
             if (!$ep) continue;
-            if (!isset($obj['endpoints']) || !is_array($obj['endpoints'])) $obj['endpoints'] = [];
-            $obj['endpoints'][] = $ep;
+            if (!isset($obj->endpoints) || !is_array($obj->endpoints)) $obj->endpoints = [];
+            $obj->endpoints[] = $ep;
         }
         $added[] = $nm; $names[] = $nm;
     }
     if (!$added) return $body;
-    foreach ($obj['outbounds'] as &$o) {
-        if (is_array($o) && in_array(($o['type'] ?? ''), ['selector', 'urltest'], true) && isset($o['outbounds']) && is_array($o['outbounds'])) {
-            foreach ($added as $nm) if (!in_array($nm, $o['outbounds'], true)) $o['outbounds'][] = $nm;
+    foreach ($obj->outbounds as $o) {
+        if (is_object($o) && in_array(($o->type ?? ''), ['selector', 'urltest'], true) && isset($o->outbounds) && is_array($o->outbounds)) {
+            foreach ($added as $nm) if (!in_array($nm, $o->outbounds, true)) $o->outbounds[] = $nm;
         }
     }
-    unset($o);
     $enc = json_encode($obj, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     return $enc === false ? $body : $enc;
+}
+
+function squadconf_xray_json_enabled() { return setting('squad_xray_json_inject', '0') === '1'; }
+
+function conf_set_param($raw, $section, $key, $value) {
+    $section = strtolower($section);
+    $lines = preg_split('/\r\n|\r|\n/', (string) $raw);
+    $cur = ''; $done = false; $out = [];
+    foreach ($lines as $ln) {
+        if (preg_match('/^\s*\[([A-Za-z]+)\]/', $ln, $m)) $cur = strtolower($m[1]);
+        if (!$done && $cur === $section && preg_match('/^\s*' . preg_quote($key, '/') . '\s*=/i', $ln)) {
+            if ($value !== '') $out[] = $key . ' = ' . $value;
+            $done = true;
+            continue;
+        }
+        $out[] = $ln;
+    }
+    if (!$done && $value !== '') {
+        $res = []; $ins = false;
+        foreach ($out as $ln) {
+            $res[] = $ln;
+            if (!$ins && preg_match('/^\s*\[([A-Za-z]+)\]/', $ln, $m) && strtolower($m[1]) === $section) {
+                $res[] = $key . ' = ' . $value; $ins = true;
+            }
+        }
+        $out = $res;
+    }
+    return implode("\n", $out);
+}
+
+function squadconf_supported_types($body, $format) {
+    if ($format === 'clash') return ['wireguard', 'amneziawg', 'vless'];
+    $trim = ltrim((string) $body);
+    if ($trim === '' || ($trim[0] !== '[' && $trim[0] !== '{')) return ['wireguard', 'amneziawg', 'vless'];
+    $obj = json_decode((string) $body, true);
+    if (squadconf_is_singbox($obj)) return ['wireguard', 'vless'];
+    return ['wireguard', 'vless'];
 }
 
 function squadconf_inject($body, $format, array $configs) {
@@ -518,7 +572,7 @@ function squadconf_inject($body, $format, array $configs) {
         if ($trim === '' || ($trim[0] !== '[' && $trim[0] !== '{')) return squadconf_inject_base64($body, $configs);
         $obj = json_decode($body, true);
         if (squadconf_is_singbox($obj)) return squadconf_inject_singbox($body, $configs);
-        if (setting('squad_xray_json_inject', '0') === '1') return squadconf_inject_xray_json($body, $configs);
+        if (squadconf_xray_json_enabled()) return squadconf_inject_xray_json($body, $configs);
         return $body;
     } catch (Throwable $e) { error_log('submw squadconf inject: ' . $e->getMessage()); return $body; }
 }
@@ -541,6 +595,7 @@ function xray_wg_outbound($parsed, $tag) {
         'secretKey' => (string) $if['PrivateKey'],
         'address'   => $addr ?: ['10.0.0.2/32'],
         'peers'     => [$peer],
+        'noKernelTun' => true,
     ];
     if (!empty($if['MTU'])) $settings['mtu'] = (int) $if['MTU'];
     $o = ['protocol' => 'wireguard', 'settings' => $settings];
@@ -554,8 +609,8 @@ function xray_outbound_any($pn, $tag) {
 }
 
 function squadconf_inject_xray_json($body, array $configs) {
-    $obj = json_decode((string) $body, true);
-    if (!is_array($obj)) return $body;
+    $obj = json_decode((string) $body);
+    if (!is_array($obj) && !is_object($obj)) return $body;
 
     $items = []; $names = [];
     foreach ($configs as $c) {
@@ -568,35 +623,33 @@ function squadconf_inject_xray_json($body, array $configs) {
     }
     if (!$items) return $body;
 
-    $isList = ($obj !== [] && array_keys($obj) === range(0, count($obj) - 1));
-    if ($isList) {
+    if (is_array($obj)) {
         foreach ($obj as $el) {
-            if (!is_array($el) || !isset($el['outbounds']) || !is_array($el['outbounds'])) return $body;
+            if (!is_object($el) || !isset($el->outbounds) || !is_array($el->outbounds)) return $body;
         }
-        $tplIdx = -1;
-        foreach ($obj as $k => $el) { if (is_array($el) && isset($el['outbounds']) && is_array($el['outbounds'])) { $tplIdx = $k; break; } }
-        if ($tplIdx < 0) return $body;
+        $tpl = null;
+        foreach ($obj as $el) { if (is_object($el) && isset($el->outbounds) && is_array($el->outbounds)) { $tpl = $el; break; } }
+        if ($tpl === null) return $body;
         foreach ($items as $it) {
-            $el = $obj[$tplIdx];
+            $el = json_decode(json_encode($tpl));
             $pi = -1; $ptag = 'proxy';
-            foreach ($el['outbounds'] as $oi => $ob) {
-                if ((string) ($ob['tag'] ?? '') === 'proxy') { $pi = $oi; $ptag = 'proxy'; break; }
+            foreach ($el->outbounds as $oi => $ob) {
+                if (is_object($ob) && (string) ($ob->tag ?? '') === 'proxy') { $pi = $oi; $ptag = 'proxy'; break; }
             }
             if ($pi < 0) {
-                foreach ($el['outbounds'] as $oi => $ob) {
-                    if (!in_array((string) ($ob['protocol'] ?? ''), ['freedom', 'blackhole', 'dns'], true)) { $pi = $oi; $ptag = (string) ($ob['tag'] ?? 'proxy'); break; }
+                foreach ($el->outbounds as $oi => $ob) {
+                    if (is_object($ob) && !in_array((string) ($ob->protocol ?? ''), ['freedom', 'blackhole', 'dns'], true)) { $pi = $oi; $ptag = (string) ($ob->tag ?? 'proxy'); break; }
                 }
             }
             $wg = xray_outbound_any($it['pn'], $ptag !== '' ? $ptag : 'proxy');
             if (!$wg) continue;
-            if ($pi >= 0) $el['outbounds'][$pi] = $wg;
-            else array_unshift($el['outbounds'], $wg);
-            $el['remarks'] = $it['name'];
+            if ($pi >= 0) $el->outbounds[$pi] = $wg; else array_unshift($el->outbounds, $wg);
+            $el->remarks = $it['name'];
             $obj[] = $el;
         }
     } else {
-        if (!isset($obj['outbounds']) || !is_array($obj['outbounds'])) return $body;
-        foreach ($items as $it) { $wg = xray_outbound_any($it['pn'], ''); if ($wg) $obj['outbounds'][] = $wg; }
+        if (!isset($obj->outbounds) || !is_array($obj->outbounds)) return $body;
+        foreach ($items as $it) { $wg = xray_outbound_any($it['pn'], ''); if ($wg) $obj->outbounds[] = $wg; }
     }
     $enc = json_encode($obj, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     return $enc === false ? $body : $enc;

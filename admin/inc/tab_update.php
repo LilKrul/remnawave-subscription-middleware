@@ -72,7 +72,7 @@ $u_branches  = array_values(array_unique(array_filter(['main', 'dev', $u_branch]
         Обновление прослойки с GitHub по коммитам: тянутся только изменённые файлы из <b><?= h(update_repo()) ?></b> (ветка <b><?= h(update_branch()) ?></b>). Git на сервере не нужен — только доступ к GitHub. Проверка идёт автоматически раз в 12 часов; пункт меню «Обновление» подсвечивается, когда появились новые коммиты.
     </div>
 
-    <section class="coll" data-coll="update_perms">
+    <section class="<?= coll_cls('update_perms') ?>" data-coll="update_perms">
         <button type="button" class="coll-head" onclick="collToggle(this)"><span>🔑 Шаг 1 — права на запись (нужно для кнопки «Обновить»)</span>
             <span class="coll-hr"><svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></span>
         </button>
@@ -163,26 +163,29 @@ $u_branches  = array_values(array_unique(array_filter(['main', 'dev', $u_branch]
     <div class="card"><p style="margin:0">✅ Установлена последняя версия — обновлять нечего.</p></div>
     <?php endif; ?>
 
-    <?php if ($u_log): ?>
-    <div class="card">
-        <h2 style="margin-top:0;font-size:1rem">Журнал последней операции</h2>
-        <div class="up-logbox"><?php foreach ($u_log as $line): ?><div><?= h((string) $line) ?></div><?php endforeach; ?></div>
+    <?php if ($u_log || $u_backup !== ''): ?>
+    <div style="display:flex;gap:1rem;flex-wrap:wrap;align-items:stretch;margin-bottom:1rem">
+        <?php if ($u_log): ?>
+        <div class="card" style="flex:1 1 300px;margin:0">
+            <h2 style="margin-top:0;font-size:1rem">Журнал последней операции</h2>
+            <div class="up-logbox"><?php foreach ($u_log as $line): ?><div><?= h((string) $line) ?></div><?php endforeach; ?></div>
+        </div>
+        <?php endif; ?>
+        <?php if ($u_backup !== ''): ?>
+        <div class="card" style="flex:1 1 300px;margin:0">
+            <h2 style="margin-top:0;font-size:1rem">Откат</h2>
+            <p class="muted" style="margin-top:0">Последний бэкап: <code><?= h($u_backup) ?></code>. Откат вернёт файлы к состоянию до последнего обновления.</p>
+            <form method="post" onsubmit="var f=this;uiConfirm('Откатить последнее обновление из бэкапа?',function(){f.submit();},'Откатить',false);return false;">
+                <input type="hidden" name="csrf" value="<?= h($token) ?>">
+                <input type="hidden" name="action" value="update_rollback">
+                <button type="submit" class="btn ghost">↩️ Откатить последнее обновление</button>
+            </form>
+        </div>
+        <?php endif; ?>
     </div>
     <?php endif; ?>
 
-    <?php if ($u_backup !== ''): ?>
-    <div class="card">
-        <h2 style="margin-top:0;font-size:1rem">Откат</h2>
-        <p class="muted" style="margin-top:0">Последний бэкап: <code><?= h($u_backup) ?></code>. Откат вернёт файлы к состоянию до последнего обновления.</p>
-        <form method="post" onsubmit="var f=this;uiConfirm('Откатить последнее обновление из бэкапа?',function(){f.submit();},'Откатить',false);return false;">
-            <input type="hidden" name="csrf" value="<?= h($token) ?>">
-            <input type="hidden" name="action" value="update_rollback">
-            <button type="submit" class="btn ghost">↩️ Откатить последнее обновление</button>
-        </form>
-    </div>
-    <?php endif; ?>
-
-    <section class="coll collapsed" data-coll="update_help">
+    <section class="<?= coll_cls('update_help', true) ?>" data-coll="update_help">
         <button type="button" class="coll-head" onclick="collToggle(this)"><span>❓ Как это работает и на что обратить внимание</span>
             <span class="coll-hr"><svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></span>
         </button>

@@ -1,12 +1,16 @@
-    <div class="card">
-        <h2 style="margin-top:0;font-size:1rem">Слияние подписок</h2>
-        <p class="muted">Прослойка подмешивает узлы <b>второй подписки</b> в тело основной — клиенту отдаётся одна ссылка, а серверы из обеих подписок лежат вместе под общими группами. Вторая подписка — отдельный пользователь со <b>своим лимитом трафика</b>, поэтому лимит «на доп-сервер» независим от основного.</p>
-        <p class="muted">Подмешивание идёт <b>только пока основная подписка активна</b>: истекла/заблокирована — узлы второй пропадают сами (страховка от криво выставленного времени). При исчерпании <b>трафика</b> второй подписки вместо её узлов подмешивается заглушка-метка.</p>
-        <p class="muted"><b>Авто</b> — по совпадению имени (<code>tg_&lt;id&gt;</code> → <code>tg_&lt;id&gt;<?= h(addsub_suffix()) ?></code>), находится через API панели. <b>Ручное</b> — кнопкой «+» во вкладке «Пользователи»: вводится адрес второй подписки. Настройки ниже общие для обоих режимов.</p>
-    </div>
+    <section class="<?= coll_cls('addsub_intro') ?>" data-coll="addsub_intro">
+        <button type="button" class="coll-head" onclick="collToggle(this)"><span>Слияние подписок</span>
+            <span class="coll-hr"><svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></span>
+        </button>
+        <div class="coll-body">
+            <p class="muted">Прослойка подмешивает узлы <b>второй подписки</b> в тело основной — клиенту отдаётся одна ссылка, а серверы из обеих подписок лежат вместе под общими группами. Вторая подписка — отдельный пользователь со <b>своим лимитом трафика</b>, поэтому лимит «на доп-сервер» независим от основного.</p>
+            <p class="muted">Подмешивание идёт <b>только пока основная подписка активна</b>: истекла/заблокирована — узлы второй пропадают сами (страховка от криво выставленного времени). При исчерпании <b>трафика</b> второй подписки вместо её узлов подмешивается заглушка-метка.</p>
+            <p class="muted"><b>Авто</b> — по совпадению имени (<code>tg_&lt;id&gt;</code> → <code>tg_&lt;id&gt;<?= h(addsub_suffix()) ?></code>), находится через API панели. <b>Ручное</b> — кнопкой «+» во вкладке «Пользователи»: вводится адрес второй подписки. Настройки ниже общие для обоих режимов.</p>
+        </div>
+    </section>
 
     <div class="card">
-        <form method="post">
+        <form method="post" data-autosave>
             <input type="hidden" name="csrf" value="<?= h($token) ?>">
             <input type="hidden" name="action" value="save_addsub">
             <div class="set-row">
@@ -32,7 +36,7 @@
         </form>
     </div>
 
-    <section class="coll collapsed" data-coll="addsub_help">
+    <section class="<?= coll_cls('addsub_help', true) ?>" data-coll="addsub_help">
         <button type="button" class="coll-head" onclick="collToggle(this)"><span>📘 Как собрать вторую подписку с доп-заглушками</span>
             <span class="coll-hr"><svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></span>
         </button>

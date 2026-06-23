@@ -24,6 +24,31 @@ function trust_header_expire() { return setting('trust_header_expire', '1') === 
 
 function api_tls_verify() { return setting('tls_verify', '1') === '1'; }
 
+function ua_hwid_parse() { return setting('ua_hwid_parse', '0') === '1'; }
+
+function ua_hwid_keys_all() { return ['x-hwid', 'x-device-os', 'x-ver-os', 'x-device-model']; }
+
+function ua_hwid_keys() {
+    $all = ua_hwid_keys_all();
+    $raw = json_decode((string) setting('ua_hwid_keys', '["x-hwid"]'), true);
+    if (!is_array($raw)) return ['x-hwid'];
+    $out = [];
+    foreach ($raw as $k) {
+        $k = strtolower(trim((string) $k));
+        if (in_array($k, $all, true) && !in_array($k, $out, true)) $out[] = $k;
+    }
+    return $out ?: ['x-hwid'];
+}
+
+function ua_hwid_extract($ua, $key) {
+    $ua  = (string) $ua;
+    $key = (string) $key;
+    if ($ua === '' || $key === '') return '';
+    if (!preg_match('/' . preg_quote($key, '/') . '=([^;)]+)/i', $ua, $m)) return '';
+    $val = preg_replace('/[\x00-\x1F\x7F]/', '', trim($m[1]));
+    return strlen($val) > 256 ? substr($val, 0, 256) : $val;
+}
+
 function expired_grace_days() { return max(0, (int) (setting('expired_grace_days', '7'))); }
 
 function expired_grace_passed($expire_ts, $created_at_str = null, $now = null) {
@@ -57,6 +82,8 @@ function grace_traffic_strategy() {
 
 function grace_hwid_limit_raw() { return trim((string) setting('grace_hwid_limit', '')); }
 
+function grace_announce() { return (string) setting('grace_announce', ''); }
+
 function grace_days() {
     $v = setting('grace_days', '');
     return $v === '' ? expired_grace_days() : max(0, (int) $v);
@@ -64,6 +91,14 @@ function grace_days() {
 
 function grace_squad_active() {
     return grace_squad_enabled() && grace_squad_uuid() !== '' && remnawave_url() !== '' && remnawave_token() !== '';
+}
+
+function grace_external_enabled() { return setting('grace_external_enabled', '0') === '1'; }
+
+function grace_external_squad_uuid() { return trim((string) setting('grace_external_squad_uuid', '')); }
+
+function grace_external_active() {
+    return grace_external_enabled() && grace_external_squad_uuid() !== '' && remnawave_url() !== '' && remnawave_token() !== '';
 }
 
 function forward_enabled() { return setting('forward_enabled', '0') === '1'; }
@@ -108,8 +143,8 @@ function forward_webhook($raw_body, $event = null, $force = false) {
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_TIMEOUT        => $timeout,
             CURLOPT_CONNECTTIMEOUT => 3,
-            CURLOPT_SSL_VERIFYPEER => false,
-            CURLOPT_SSL_VERIFYHOST => false,
+            CURLOPT_SSL_VERIFYPEER => api_tls_verify(),
+            CURLOPT_SSL_VERIFYHOST => api_tls_verify() ? 2 : 0,
             CURLOPT_HTTPHEADER     => [
                 'Content-Type: application/json',
                 'X-Remnawave-Signature: ' . $sig,

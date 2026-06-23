@@ -79,6 +79,19 @@ if (subpage_active()) {
     $request_headers = panel_cookie_header($request_headers);
 }
 
+$ua_hwid_value = '';
+$ua_string = $_SERVER['HTTP_USER_AGENT'] ?? '';
+if (ua_hwid_parse() && $ua_string !== '') {
+    foreach (ua_hwid_keys() as $uk) {
+        $sk = 'HTTP_' . strtoupper(str_replace('-', '_', $uk));
+        if (isset($_SERVER[$sk]) && trim((string) $_SERVER[$sk]) !== '') continue;
+        $uv = ua_hwid_extract($ua_string, $uk);
+        if ($uv === '') continue;
+        $request_headers[] = $uk . ': ' . $uv;
+        if ($uk === 'x-hwid') $ua_hwid_value = $uv;
+    }
+}
+
 $grabbed_headers = [];
 $ch = curl_init();
 curl_setopt_array($ch, [
@@ -123,6 +136,7 @@ if ($curl_err) {
 }
 
 $current_hwid = $_SERVER['HTTP_X_HWID'] ?? '';
+if ($current_hwid === '' && $ua_hwid_value !== '') $current_hwid = $ua_hwid_value;
 $expire_ts    = parse_expire_from_userinfo($grabbed_headers['subscription-userinfo'] ?? null);
 $now          = time();
 $trust_header = trust_header_expire();
@@ -203,7 +217,7 @@ if ($do_substitute) {
 if ($decision === 'normal' && $short_uuid !== '' && squadconf_any()) {
     $u_squads = squadconf_user_squads($short_uuid);
     if ($u_squads) {
-        $u_cfgs = squadconf_for_squads($u_squads);
+        $u_cfgs = wglease_select($short_uuid, $current_hwid, $u_squads, squadconf_supported_types($response, $format));
         if ($u_cfgs) $response = squadconf_inject($response, $format, $u_cfgs);
     }
 }
@@ -230,9 +244,13 @@ foreach ($grabbed_headers as $name => $value) {
     if (!in_array($name, $unsafe, true)) header($name . ': ' . $value);
 }
 emit_response_headers();
+$is_grace = ($short_uuid !== '' && grace_is_active($short_uuid));
+if ($is_grace && !grace_external_active() && ($ga = grace_announce()) !== '') {
+    header('announce: ' . rules_encode_value('announce', $ga));
+}
 echo $response;
 if (!$skip_log) {
-    $log_decision = grace_is_active($short_uuid) ? 'grace' : $decision;
+    $log_decision = $is_grace ? 'grace' : $decision;
     if (!$is_page && reqlog_is_real($grabbed_headers, $log_decision, $short_ov)) {
         $GLOBALS['submw_real_sub'] = true;
         log_request($ip, $short_uuid, $path, $ua, $log_decision, $expire_ts, $current_hwid);

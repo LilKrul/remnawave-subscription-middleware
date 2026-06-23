@@ -6,14 +6,14 @@
     </div>
 
     <div class="card">
-        <form method="post">
+        <form method="post" data-autosave>
             <input type="hidden" name="csrf" value="<?= h($token) ?>">
             <input type="hidden" name="action" value="save_grace">
             <div class="set-row">
                 <div class="set-info"><div class="set-t">Включить грейс-сквад</div><div class="set-d">На <code>user.expired</code> переносить истёкшего в ограниченный сквад вместо обычного истечения.</div></div>
                 <label class="switch"><input type="checkbox" name="grace_squad_enabled" <?= grace_squad_enabled()?'checked':'' ?>><span class="sl"></span></label>
             </div>
-            <label>Сквад для истёкших</label>
+            <label style="margin-top:1.25rem;display:block">Сквад для истёкших</label>
             <?php if ($grace_squads_err !== ''): ?>
                 <div class="warn">Не удалось получить список сквадов: <?= h($grace_squads_err) ?>. Проверьте URL и токен в «Подключении».</div>
             <?php elseif (!$grace_squads): ?>
@@ -41,11 +41,46 @@
                     </select>
                 </div>
             </div>
+            <div class="set-row" style="margin-top:1.5rem">
+                <div class="set-info"><div class="set-t">Внешний сквад на время грейса</div><div class="set-d">Дополнительно к внутреннему: на грейс юзеру выдаётся внешний сквад (его <code>announce</code> и заголовки из Subscription Settings панели), после грейса возвращается родной.</div></div>
+                <label class="switch"><input type="checkbox" name="grace_external_enabled" <?= grace_external_enabled()?'checked':'' ?>><span class="sl"></span></label>
+            </div>
+            <label>Внешний сквад для грейса</label>
+            <?php if ($ext_squads_err !== ''): ?>
+                <div class="warn">Не удалось получить список внешних сквадов: <?= h($ext_squads_err) ?>. Проверьте URL и токен в «Подключении».</div>
+            <?php elseif (!$ext_squads): ?>
+                <p class="muted">Внешних сквадов нет или API не настроен. Создайте внешний сквад в панели и задайте в его Subscription Settings нужный <code>announce</code>/заголовки.</p>
+            <?php else: $curx = grace_external_squad_uuid(); ?>
+                <div class="sq-grid">
+                <?php foreach ($ext_squads as $s): ?>
+                    <label class="sq-item<?= $curx === $s['uuid'] ? ' on' : '' ?>">
+                        <input type="radio" name="grace_external_squad_uuid" value="<?= h($s['uuid']) ?>" <?= $curx === $s['uuid'] ? 'checked' : '' ?>>
+                        <span class="sq-n"><?= h($s['name']) ?></span>
+                        <span class="muted" style="font-size:.78rem"><?= (int) $s['members'] ?></span>
+                    </label>
+                <?php endforeach; ?>
+                </div>
+            <?php endif; ?>
+            <label style="margin-top:1.5rem;display:block">Фолбэк: анонс из прослойки <span class="hint">если внешний сквад не задан</span></label>
+            <p class="muted" style="margin:.2rem 0 .7rem">Прослойка сама подставит этот <code>announce</code> на время грейса (поверх анонса панели). При активном внешнем скваде — игнорируется.</p>
+            <div class="ga-wrap">
+                <div class="ga-edit">
+                    <textarea name="grace_announce" id="ga-input" rows="4" maxlength="400" placeholder="Подписка истекла &#10;Продлите — доступ вернётся&#10;Поддержка: @your_bot"><?= h(str_replace('\n', "\n", grace_announce())) ?></textarea>
+                    <p class="muted" style="font-size:.8rem;margin:.5rem 0 0">Каждая строка — отдельный перенос (работает во всех клиентах, как в панели). Кириллица кодируется в base64 сама, лимит 200 символов.</p>
+                </div>
+                <div class="ga-prev">
+                    <label style="margin-top:0">Превью в клиенте</label>
+                    <div class="ga-client">
+                        <div class="ga-c-head"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l18-5v12L3 14v-3z"/><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"/></svg>Объявление</div>
+                        <div class="ga-c-body" id="ga-prev"></div>
+                    </div>
+                </div>
+            </div>
             <div style="margin-top:1.25rem"><button type="submit">💾 Сохранить</button></div>
         </form>
     </div>
 
-    <section class="coll collapsed" data-coll="g_squad_help">
+    <section class="<?= coll_cls('g_squad_help', true) ?>" data-coll="g_squad_help">
         <button type="button" class="coll-head" onclick="collToggle(this)"><span>📘 Как сделать сквад с ремарками в панели</span>
             <span class="coll-hr"><svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></span>
         </button>
@@ -111,12 +146,30 @@
         </div>
     </section>
     <style>
+    .ga-wrap{display:grid;grid-template-columns:1fr 280px;gap:1.1rem;align-items:start}
+    @media(max-width:720px){.ga-wrap{grid-template-columns:1fr}}
+    .ga-edit textarea{width:100%;box-sizing:border-box;resize:vertical;font-family:inherit;font-size:.9rem;line-height:1.5;padding:.6rem .75rem;border:1px solid var(--line);border-radius:9px;background:var(--bg2);color:var(--text)}
+    .ga-edit textarea:focus{outline:none;border-color:var(--accent)}
+    .ga-client{border:1px solid var(--line);border-radius:13px;overflow:hidden;background:var(--bg2);box-shadow:var(--shadow)}
+    .ga-c-head{display:flex;align-items:center;gap:.45rem;padding:.55rem .85rem;font-weight:600;font-size:.82rem;background:var(--accent);color:var(--accent-text)}
+    .ga-c-body{padding:.75rem .9rem;font-size:.87rem;line-height:1.6;color:var(--text);min-height:3.4rem;word-break:break-word}
+    .ga-c-empty{color:var(--muted);font-style:italic}
     .codeblk{position:relative;margin:.5rem 0}
     .codeblk pre{margin:0;background:var(--bg2);border:1px solid var(--line);border-radius:9px;padding:2.3rem .9rem .85rem;overflow:auto;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:.78rem;line-height:1.5;white-space:pre;color:var(--text)}
     .codeblk .copybtn{position:absolute;top:.45rem;right:.45rem;padding:.28rem .62rem;font-size:.72rem;border:1px solid var(--line);border-radius:7px;background:var(--card);color:var(--text);cursor:pointer;font-weight:600;line-height:1}
     .codeblk .copybtn:hover{filter:brightness(1.1)}
     </style>
     <script>
+    (function(){
+        var inp = document.getElementById('ga-input'), pv = document.getElementById('ga-prev');
+        if (!inp || !pv) return;
+        function esc(s){ return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+        function upd(){
+            var t = inp.value.replace(/\r\n?/g,'\n').replace(/^\n+|\n+$/g,'');
+            pv.innerHTML = t === '' ? '<span class="ga-c-empty">— анонс выключен —</span>' : esc(t).replace(/\n/g,'<br>');
+        }
+        inp.addEventListener('input', upd); upd();
+    })();
     function copyGraceCfg(btn){
         var el = document.getElementById('grace-inbound-json');
         if (!el) return;
