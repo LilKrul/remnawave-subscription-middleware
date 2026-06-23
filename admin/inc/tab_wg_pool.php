@@ -46,8 +46,8 @@ if (($sqcfg_sizing['rows'] ?? []) && $wgp_ts > 0) {
         .wg-tip{position:relative;cursor:help}
         .wg-tip:hover::after{content:attr(data-tip);position:absolute;left:0;bottom:145%;white-space:pre-line;text-align:left;min-width:210px;max-width:340px;background:var(--card);color:var(--text);border:1px solid var(--line);border-radius:9px;padding:.55rem .75rem;font-size:.76rem;font-weight:500;line-height:1.55;box-shadow:var(--shadow);z-index:30}
         #wgTbl td:nth-child(6),#wgTbl th:nth-child(6){min-width:210px}
-        .wg-issued{display:inline-flex;align-items:baseline;gap:.3rem;max-width:210px;vertical-align:bottom}
-        .wg-issued>.wg-tip{display:inline-flex;align-items:baseline;gap:.3rem;min-width:0;max-width:100%}
+        .wg-issued{display:inline-flex;flex-wrap:wrap;align-items:baseline;gap:.1rem .3rem;max-width:100%;vertical-align:bottom}
+        .wg-issued>.wg-tip{display:inline-flex;flex-wrap:wrap;align-items:baseline;gap:.1rem .3rem;min-width:0;max-width:100%}
         .wg-issued-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
     </style>
     <section class="<?= coll_cls('wgpool_help') ?>" data-coll="wgpool_help">
