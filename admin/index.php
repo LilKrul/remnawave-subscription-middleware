@@ -956,6 +956,36 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && is_auth()) {
         form_saved('addsub');
     }
 
+    if ($action === 'save_ua_rules') {
+        if (isset($_POST['reset'])) {
+            set_setting('ua_delivery_rules', '');
+            flash('Правила отдачи сброшены к стандартным');
+        } else {
+            $uas    = is_array($_POST['rule_ua'] ?? null) ? $_POST['rule_ua'] : [];
+            $labels = is_array($_POST['rule_label'] ?? null) ? $_POST['rule_label'] : [];
+            $cores  = is_array($_POST['rule_core'] ?? null) ? $_POST['rule_core'] : [];
+            $awg    = is_array($_POST['rule_no_awg'] ?? null) ? $_POST['rule_no_awg'] : [];
+            $wg     = is_array($_POST['rule_no_wg'] ?? null) ? $_POST['rule_no_wg'] : [];
+            $rules = []; $seen = [];
+            foreach ($uas as $i => $ua) {
+                $ua = strtolower(trim((string) $ua));
+                if ($ua === '' || isset($seen[$ua])) continue;
+                $seen[$ua] = true;
+                $lbl = mb_substr(trim((string) ($labels[$i] ?? '')), 0, 60);
+                $rules[] = [
+                    'ua'     => mb_substr($ua, 0, 60),
+                    'label'  => $lbl !== '' ? $lbl : $ua,
+                    'core'   => mb_substr(trim((string) ($cores[$i] ?? '')), 0, 24),
+                    'no_awg' => isset($awg[$i]) ? 1 : 0,
+                    'no_wg'  => isset($wg[$i]) ? 1 : 0,
+                ];
+            }
+            set_setting('ua_delivery_rules', json_encode($rules, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+            flash('Правила отдачи по UA сохранены');
+        }
+        form_saved('wg_pool');
+    }
+
     if ($action === 'save_sqcfg_settings') {
         set_setting('squad_xray_json_inject', isset($_POST['squad_xray_json_inject']) ? '1' : '0');
         flash('Настройки доп-конфигов сохранены');
