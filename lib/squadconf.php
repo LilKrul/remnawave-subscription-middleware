@@ -411,13 +411,82 @@ function wg_to_uri_wg($parsed, $name) {
     return 'wg://' . $host . ':' . (int) $port . '?' . implode('&', $q) . '#' . rawurlencode($name);
 }
 
+function squadconf_ua_rules_catalog() {
+    return [
+        ['ua' => 'mihomo',       'label' => 'Clash Meta / Mihomo', 'core' => 'mihomo',   'no_awg' => 0, 'no_wg' => 0],
+        ['ua' => 'clash',        'label' => 'Clash',               'core' => 'mihomo',   'no_awg' => 0, 'no_wg' => 0],
+        ['ua' => 'verge',        'label' => 'Clash Verge',         'core' => 'mihomo',   'no_awg' => 0, 'no_wg' => 0],
+        ['ua' => 'flclash',      'label' => 'FlClash',             'core' => 'mihomo',   'no_awg' => 0, 'no_wg' => 0],
+        ['ua' => 'flclashx',     'label' => 'FlClashX',            'core' => 'mihomo',   'no_awg' => 0, 'no_wg' => 0],
+        ['ua' => 'koala',        'label' => 'Koala Clash',         'core' => 'mihomo',   'no_awg' => 0, 'no_wg' => 0],
+        ['ua' => 'stash',        'label' => 'Stash',               'core' => 'mihomo',   'no_awg' => 0, 'no_wg' => 0],
+        ['ua' => 'throne',       'label' => 'Throne',              'core' => 'sing-box', 'no_awg' => 0, 'no_wg' => 0],
+        ['ua' => 'happ',         'label' => 'Happ',                'core' => 'xray',     'no_awg' => 1, 'no_wg' => 0],
+        ['ua' => 'incy',         'label' => 'INCY',                'core' => 'xray',     'no_awg' => 1, 'no_wg' => 0],
+        ['ua' => 'v2rayng',      'label' => 'v2rayNG',             'core' => 'xray',     'no_awg' => 1, 'no_wg' => 0],
+        ['ua' => 'v2rayn',       'label' => 'v2rayN',              'core' => 'xray',     'no_awg' => 1, 'no_wg' => 0],
+        ['ua' => 'v2raytun',     'label' => 'v2RayTun',            'core' => 'xray',     'no_awg' => 1, 'no_wg' => 0],
+        ['ua' => 'v2box',        'label' => 'V2Box',               'core' => 'xray',     'no_awg' => 1, 'no_wg' => 0],
+        ['ua' => 'foxray',       'label' => 'FoXray',              'core' => 'xray',     'no_awg' => 1, 'no_wg' => 0],
+        ['ua' => 'shadowrocket', 'label' => 'Shadowrocket',        'core' => 'xray',     'no_awg' => 1, 'no_wg' => 0],
+        ['ua' => 'sing-box',     'label' => 'sing-box',            'core' => 'sing-box', 'no_awg' => 1, 'no_wg' => 0],
+        ['ua' => 'nekobox',      'label' => 'NekoBox',             'core' => 'sing-box', 'no_awg' => 1, 'no_wg' => 0],
+        ['ua' => 'nekoray',      'label' => 'NekoRay',             'core' => 'sing-box', 'no_awg' => 1, 'no_wg' => 0],
+        ['ua' => 'hiddify',      'label' => 'Hiddify',             'core' => 'sing-box', 'no_awg' => 1, 'no_wg' => 0],
+        ['ua' => 'streisand',    'label' => 'Streisand',           'core' => 'sing-box', 'no_awg' => 1, 'no_wg' => 0],
+        ['ua' => 'karing',       'label' => 'Karing',              'core' => 'sing-box', 'no_awg' => 1, 'no_wg' => 0],
+    ];
+}
+
+function squadconf_ua_rules() {
+    $j = (string) setting('ua_delivery_rules', '');
+    if ($j !== '') {
+        $a = json_decode($j, true);
+        if (is_array($a)) {
+            $out = [];
+            foreach ($a as $r) {
+                if (!is_array($r)) continue;
+                $ua = strtolower(trim((string) ($r['ua'] ?? '')));
+                if ($ua === '') continue;
+                $out[] = [
+                    'ua'     => $ua,
+                    'label'  => trim((string) ($r['label'] ?? $ua)),
+                    'core'   => (string) ($r['core'] ?? ''),
+                    'no_awg' => !empty($r['no_awg']) ? 1 : 0,
+                    'no_wg'  => !empty($r['no_wg']) ? 1 : 0,
+                ];
+            }
+            return $out;
+        }
+    }
+    return squadconf_ua_rules_catalog();
+}
+
+function squadconf_ua_flags() {
+    static $cache = null;
+    if ($cache !== null) return $cache;
+    $ua = strtolower((string) ($_SERVER['HTTP_USER_AGENT'] ?? ''));
+    $no_awg = false; $no_wg = false;
+    if ($ua !== '') {
+        foreach (squadconf_ua_rules() as $r) {
+            $needle = (string) $r['ua'];
+            if ($needle !== '' && strpos($ua, $needle) !== false) {
+                if (!empty($r['no_awg'])) $no_awg = true;
+                if (!empty($r['no_wg'])) $no_wg = true;
+            }
+        }
+    }
+    return $cache = ['no_awg' => $no_awg, 'no_wg' => $no_wg];
+}
+
+function squadconf_ua_no_amnezia() { $f = squadconf_ua_flags(); return $f['no_awg']; }
+
+function squadconf_ua_no_wg() { $f = squadconf_ua_flags(); return $f['no_wg']; }
+
 function squadconf_inject_base64($body, array $configs) {
     $decoded = base64_decode(trim((string) $body), true);
     if ($decoded === false || $decoded === '') return $body;
-    $ua = strtolower((string) ($_SERVER['HTTP_USER_AGENT'] ?? ''));
-    $no_amnezia_ua = ['v2rayng', 'v2rayn', 'happ', 'incy'];
-    $no_amnezia = false;
-    foreach ($no_amnezia_ua as $needle) if (strpos($ua, $needle) !== false) { $no_amnezia = true; break; }
+    $no_amnezia = squadconf_ua_no_amnezia();
     if ($no_amnezia) {
         $scheme = 'wireguard';
     } else {
@@ -556,16 +625,35 @@ function conf_set_param($raw, $section, $key, $value) {
 }
 
 function squadconf_supported_types($body, $format) {
-    if ($format === 'clash') return ['wireguard', 'amneziawg', 'vless'];
+    $f = squadconf_ua_flags();
+    $wg_ok = empty($f['no_wg']);
+    $awg_ok = empty($f['no_awg']);
+    $t = ['vless'];
+    if ($format === 'clash') {
+        if ($wg_ok) $t[] = 'wireguard';
+        if ($awg_ok) $t[] = 'amneziawg';
+        return $t;
+    }
     $trim = ltrim((string) $body);
-    if ($trim === '' || ($trim[0] !== '[' && $trim[0] !== '{')) return ['wireguard', 'amneziawg', 'vless'];
-    $obj = json_decode((string) $body, true);
-    if (squadconf_is_singbox($obj)) return ['wireguard', 'vless'];
-    return ['wireguard', 'vless'];
+    $is_json = !($trim === '' || ($trim[0] !== '[' && $trim[0] !== '{'));
+    if ($wg_ok) $t[] = 'wireguard';
+    if (!$is_json && $awg_ok) $t[] = 'amneziawg';
+    return $t;
 }
 
 function squadconf_inject($body, $format, array $configs) {
     if (!$configs) return $body;
+    $f = squadconf_ua_flags();
+    if (!empty($f['no_wg']) || !empty($f['no_awg'])) {
+        $configs = array_values(array_filter($configs, function ($c) use ($f) {
+            $pn = json_decode((string) ($c['parsed'] ?? ''), true);
+            $t = is_array($pn) ? ($pn['type'] ?? '') : '';
+            if (!empty($f['no_wg']) && in_array($t, ['wireguard', 'amneziawg'], true)) return false;
+            if (!empty($f['no_awg']) && $t === 'amneziawg') return false;
+            return true;
+        }));
+        if (!$configs) return $body;
+    }
     try {
         if ($format === 'clash') return squadconf_inject_clash($body, $configs);
         $trim = ltrim((string) $body);
