@@ -565,7 +565,7 @@ if (($sqcfg_sizing['rows'] ?? []) && $wgp_ts > 0) {
             if (ua) lines.push('UA: ' + ua);
             var tip = lines.join('\n');
             var dev = hw
-                ? ('<span class="wg-issued-dev">(' + ico('device') + ico(osFile(plat)) + ')</span>')
+                ? ('<span class="wg-issued-dev">(' + ico(osFile(plat)) + ')</span>')
                 : ('<span class="muted" style="font-size:.72rem">(на польз.)</span>');
             var cliTag = cli ? (' <span class="wg-cli">' + esc(cli) + '</span>') : '';
             c.innerHTML = '<span class="wg-tip" data-tip="'+esc(tip)+'"><span class="wg-issued-name">'+esc(disp)+'</span> '+dev+cliTag+(man?' <span class="muted">🔧</span>':'')+'</span>';
