@@ -696,6 +696,27 @@ function xray_outbound_any($pn, $tag) {
     return xray_wg_outbound($pn, $tag);
 }
 
+function xray_tpl_make_single($el, $proxy) {
+    $kept = [];
+    if (isset($el->outbounds) && is_array($el->outbounds)) {
+        foreach ($el->outbounds as $ob) {
+            if (is_object($ob) && !in_array((string) ($ob->protocol ?? ''), ['freedom', 'blackhole', 'dns'], true)) continue;
+            $kept[] = $ob;
+        }
+    }
+    array_unshift($kept, $proxy);
+    $el->outbounds = $kept;
+    unset($el->observatory, $el->burstObservatory);
+    if (isset($el->routing) && is_object($el->routing)) {
+        unset($el->routing->balancers);
+        if (isset($el->routing->rules) && is_array($el->routing->rules)) {
+            foreach ($el->routing->rules as $r) {
+                if (is_object($r) && isset($r->balancerTag)) { unset($r->balancerTag); $r->outboundTag = 'proxy'; }
+            }
+        }
+    }
+}
+
 function squadconf_inject_xray_json($body, array $configs) {
     $obj = json_decode((string) $body);
     if (!is_array($obj) && !is_object($obj)) return $body;
@@ -719,19 +740,10 @@ function squadconf_inject_xray_json($body, array $configs) {
         foreach ($obj as $el) { if (is_object($el) && isset($el->outbounds) && is_array($el->outbounds)) { $tpl = $el; break; } }
         if ($tpl === null) return $body;
         foreach ($items as $it) {
-            $el = json_decode(json_encode($tpl));
-            $pi = -1; $ptag = 'proxy';
-            foreach ($el->outbounds as $oi => $ob) {
-                if (is_object($ob) && (string) ($ob->tag ?? '') === 'proxy') { $pi = $oi; $ptag = 'proxy'; break; }
-            }
-            if ($pi < 0) {
-                foreach ($el->outbounds as $oi => $ob) {
-                    if (is_object($ob) && !in_array((string) ($ob->protocol ?? ''), ['freedom', 'blackhole', 'dns'], true)) { $pi = $oi; $ptag = (string) ($ob->tag ?? 'proxy'); break; }
-                }
-            }
-            $wg = xray_outbound_any($it['pn'], $ptag !== '' ? $ptag : 'proxy');
+            $wg = xray_outbound_any($it['pn'], 'proxy');
             if (!$wg) continue;
-            if ($pi >= 0) $el->outbounds[$pi] = $wg; else array_unshift($el->outbounds, $wg);
+            $el = json_decode(json_encode($tpl));
+            xray_tpl_make_single($el, $wg);
             $el->remarks = $it['name'];
             $obj[] = $el;
         }
