@@ -7,7 +7,7 @@
         <p class="muted"><?= $wh_full ? 'События, связанные с пользователями: user.*, либо с shortUuid/именем.' : 'Всё остальное: служебные/прочие события и хуки без привязки к пользователю (включая неверную подпись).' ?></p>
         <table class="logtbl">
             <tr><th>Время</th><th>Событие</th><th>Подпись</th><th>Действие</th><?php if ($wh_full): ?><th>shortUuid</th><th>Пользователь</th><th>Статус</th><?php endif; ?></tr>
-            <tbody id="whBody">
+            <tbody id="whBody" class="lp-cap">
             <?php foreach ($whlog as $r): ?>
             <tr>
                 <td class="muted wh-time" data-ts="<?= (int) ($r['ts_epoch'] ?? 0) ?>"><?= h($r['ts']) ?></td>

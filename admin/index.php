@@ -1148,7 +1148,7 @@ $fav_href = $brand_icon !== '' ? $brand_icon : ($emoji_favicon !== '' ? $emoji_f
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title><?= h($brand['name']) ?> · админка</title>
 <link rel="icon" href="<?= $brand_icon !== '' ? h($brand_icon) : $fav_href ?>">
-<script>(function(){try{var t=localStorage.getItem('submw_theme');if(!t||t==='system')t=matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';document.documentElement.setAttribute('data-theme',t);}catch(e){document.documentElement.setAttribute('data-theme','dark');}})();</script>
+<script>(function(){try{var t=localStorage.getItem('submw_theme');if(!t||t==='system')t=matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';document.documentElement.setAttribute('data-theme',t);}catch(e){document.documentElement.setAttribute('data-theme','dark');}})();document.documentElement.classList.add('lp');</script>
 <script>
 window.phEsc=function(s){var d=document.createElement('div');d.textContent=(s==null?'':s);return d.innerHTML;};
 window.phLines=function(id){var el=document.getElementById(id);if(!el)return [];return el.value.split('\n').map(function(s){return s.trim();}).filter(function(s){return s.length;});};

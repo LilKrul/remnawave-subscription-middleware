@@ -6,7 +6,7 @@
         <p class="muted">Юзеры, переведённые в грейс-сквад. «Грейс до» — момент окончания грейса: юзер вернётся в исходный сквад и истечёт, если не продлит. Время — по вашему часовому поясу.</p>
         <table class="logtbl">
             <thead><tr><th>Пользователь</th><th>Переведён</th><th>Грейс до</th><th>Статус</th></tr></thead>
-            <tbody id="grBody">
+            <tbody id="grBody" class="lp-cap">
             <?php foreach ($grace_list as $g): $active = (int) $g['grace_until'] > time(); ?>
             <tr>
                 <td><?php if (($g['username'] ?? '') !== ''): ?><b><?= h($g['username']) ?></b><?php else: ?><code style="font-size:.78rem"><?= h($g['short_uuid']) ?></code><?php endif; ?></td>
