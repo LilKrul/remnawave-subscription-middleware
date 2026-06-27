@@ -30,9 +30,9 @@
                 </div>
             <?php endif; ?>
             <div class="row" style="margin-top:1rem">
-                <div><label>Грейс, дней <span class="hint">пусто = <?= h(expired_grace_days()) ?></span></label><input type="number" name="grace_days" min="0" value="<?= h((string) setting('grace_days','')) ?>" placeholder="<?= h(expired_grace_days()) ?>"></div>
-                <div><label>Лимит трафика, ГБ <span class="hint">0 = безлимит</span></label><input type="text" name="grace_traffic_gb" value="<?= h(rtrim(rtrim(number_format(grace_traffic_bytes() / 1073741824, 2, '.', ''), '0'), '.')) ?>" placeholder="0"></div>
-                <div><label>Лимит устройств (HWID) <span class="hint">пусто = не менять</span></label><input type="text" name="grace_hwid_limit" value="<?= h(grace_hwid_limit_raw()) ?>" placeholder="не менять"></div>
+                <div><label>Грейс, дней <span class="hint">пусто — значение по умолчанию</span></label><input type="number" name="grace_days" min="0" value="<?= h((string) setting('grace_days','')) ?>" placeholder="<?= h(expired_grace_days()) ?>"></div>
+                <div><label>Лимит трафика, ГБ <span class="hint">0 — без лимита</span></label><input type="text" name="grace_traffic_gb" value="<?= h(rtrim(rtrim(number_format(grace_traffic_bytes() / 1073741824, 2, '.', ''), '0'), '.')) ?>" placeholder="0"></div>
+                <div><label>Лимит устройств (HWID) <span class="hint">пусто — лимит не меняется</span></label><input type="text" name="grace_hwid_limit" value="<?= h(grace_hwid_limit_raw()) ?>" placeholder="не менять"></div>
                 <div><label>Стратегия сброса трафика</label>
                     <select name="grace_traffic_strategy">
                         <?php foreach (['NO_RESET' => 'Без сброса', 'DAY' => 'Ежедневно', 'WEEK' => 'Еженедельно', 'MONTH' => 'Ежемесячно', 'MONTH_ROLLING' => 'Скользящий месяц'] as $k => $v): ?>
@@ -61,7 +61,7 @@
                 <?php endforeach; ?>
                 </div>
             <?php endif; ?>
-            <label style="margin-top:1.5rem;display:block">Фолбэк: анонс из прослойки <span class="hint">если внешний сквад не задан</span></label>
+            <label style="margin-top:1.5rem;display:block">Фолбэк: анонс из прослойки <span class="hint">работает, если внешний сквад не задан</span></label>
             <p class="muted" style="margin:.2rem 0 .7rem">Прослойка сама подставит этот <code>announce</code> на время грейса (поверх анонса панели). При активном внешнем скваде — игнорируется.</p>
             <div class="ga-wrap">
                 <div class="ga-edit">

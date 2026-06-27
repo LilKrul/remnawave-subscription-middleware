@@ -18,9 +18,9 @@
                 <label class="switch"><input type="checkbox" name="addsub_enabled" <?= addsub_enabled() ? 'checked' : '' ?>><span class="sl"></span></label>
             </div>
             <div class="row" style="margin-top:1rem">
-                <div><label>Суффикс имени для авто <span class="hint">B = имя A + суффикс</span></label><input type="text" name="addsub_username_suffix" value="<?= h(addsub_suffix()) ?>" placeholder="_addsub"></div>
-                <div><label>Кэш дискавери, сек <span class="hint">мин. 30</span></label><input type="number" name="addsub_cache_ttl" min="30" value="<?= h((string) addsub_cache_ttl()) ?>" placeholder="600"></div>
-                <div><label>Префикс меток узлов B <span class="hint">пусто = без префикса</span></label><input type="text" name="addsub_label" value="<?= h(addsub_label()) ?>" placeholder="напр.: 🅑"></div>
+                <div><label>Суффикс имени для авто <span class="hint">имя B = имя A + этот суффикс</span></label><input type="text" name="addsub_username_suffix" value="<?= h(addsub_suffix()) ?>" placeholder="_addsub"></div>
+                <div><label>Кэш дискавери, сек <span class="hint">не меньше 30</span></label><input type="number" name="addsub_cache_ttl" min="30" value="<?= h((string) addsub_cache_ttl()) ?>" placeholder="600"></div>
+                <div><label>Префикс меток узлов B <span class="hint">пусто — без префикса</span></label><input type="text" name="addsub_label" value="<?= h(addsub_label()) ?>" placeholder="напр.: 🅑"></div>
             </div>
             <div class="set-row" style="margin-top:1.25rem">
                 <div class="set-info"><div class="set-t">Заглушка при исчерпании трафика B</div><div class="set-d">Когда трафик второй подписки кончился — вместо её узлов подмешать строку-метку. Выкл — узлы B просто исчезают.</div></div>
