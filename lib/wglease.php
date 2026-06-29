@@ -378,8 +378,8 @@ function wglease_sizing(&$err = '', &$warn = '', &$totals = null) {
     $dev_by_user = []; $uniq_hwid = [];
     foreach ($devices as $d) {
         if (!is_array($d)) continue;
-        $uu = (string) ($d['userUuid'] ?? '');
-        if ($uu !== '') $dev_by_user[$uu] = ($dev_by_user[$uu] ?? 0) + 1;
+        $du = (string) ($d['userId'] ?? $d['userUuid'] ?? '');
+        if ($du !== '') $dev_by_user[$du] = ($dev_by_user[$du] ?? 0) + 1;
         $hh = (string) ($d['hwid'] ?? '');
         if ($hh !== '') $uniq_hwid[$hh] = 1;
     }
@@ -390,7 +390,7 @@ function wglease_sizing(&$err = '', &$warn = '', &$totals = null) {
         $uu = (string) ($u['uuid'] ?? '');
         $active = strtoupper((string) ($u['status'] ?? '')) === 'ACTIVE';
         $lim = $u['hwidDeviceLimit'] ?? null;
-        $dev = $dev_by_user[$uu] ?? 0;
+        $dev = $dev_by_user[(string) ($u['id'] ?? '')] ?? ($dev_by_user[$uu] ?? 0);
         $squads = $u['activeInternalSquads'] ?? [];
         if (!is_array($squads)) continue;
         foreach ($squads as $sq) {

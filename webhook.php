@@ -57,10 +57,12 @@ $username   = isset($data['username']) ? (string) $data['username'] : null;
 $status     = isset($data['status'])   ? (string) $data['status']   : null;
 
 if ($event === 'user_hwid_devices.added' || $event === 'user_hwid_devices.deleted') {
-    $hw_uuid  = (string) ($data['userUuid'] ?? '');
-    $hw_hwid  = (string) ($data['hwid'] ?? '');
-    $hw_short = (string) ($data['shortUuid'] ?? $short_uuid);
-    $hw_plat  = (string) ($data['platform'] ?? '');
+    $hw_dev   = is_array($data['hwidUserDevice'] ?? null) ? $data['hwidUserDevice'] : [];
+    $hw_usr   = is_array($data['user'] ?? null) ? $data['user'] : [];
+    $hw_uuid  = (string) ($hw_usr['uuid'] ?? $data['userUuid'] ?? '');
+    $hw_hwid  = (string) ($hw_dev['hwid'] ?? $data['hwid'] ?? '');
+    $hw_short = (string) ($hw_usr['shortUuid'] ?? $data['shortUuid'] ?? $short_uuid);
+    $hw_plat  = (string) ($hw_dev['platform'] ?? $data['platform'] ?? '');
     if ($event === 'user_hwid_devices.added') wglease_hwid_upsert($hw_uuid, $hw_hwid, $hw_short, $hw_plat);
     else wglease_hwid_delete($hw_uuid, $hw_hwid);
     if ($hw_short !== '') squadconf_cache_drop($hw_short);
