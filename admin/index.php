@@ -550,6 +550,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && is_auth()) {
         set_setting('proxy_timeout', (string) max(5, (int) ($_POST['proxy_timeout'] ?? 30)));
         set_setting('sub_source', ($_POST['sub_source'] ?? 'mirror') === 'panel' ? 'panel' : 'mirror');
         set_setting('subpage_external_url', rtrim(trim($_POST['subpage_external_url'] ?? ''), '/'));
+        set_setting('apisub_accept', isset($_POST['apisub_accept']) ? '1' : '0');
         set_setting('ua_hwid_parse', isset($_POST['ua_hwid_parse']) ? '1' : '0');
         $ua_keys = [];
         foreach ((array) ($_POST['ua_hwid_keys'] ?? []) as $uk) {

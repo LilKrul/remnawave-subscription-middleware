@@ -8,6 +8,10 @@ function subpage_active() {
     return sub_source() === 'panel';
 }
 
+function apisub_accept_active() {
+    return setting('apisub_accept', '0') === '1';
+}
+
 function subpage_external_url() {
     return rtrim(trim((string) setting('subpage_external_url', '')), '/');
 }
