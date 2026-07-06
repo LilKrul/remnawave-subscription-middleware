@@ -48,7 +48,7 @@
                 <label class="switch"><input type="checkbox" name="apisub_accept" <?= apisub_accept_active()?'checked':'' ?>><span class="sl"></span></label>
             </div>
             <div class="set-row">
-                <div class="set-info"><div class="set-t">Отдавать страницу подписки (режим «Зеркало»)</div><div class="set-d">В режиме «Зеркало» открывать в браузере страницу подписки с инструкциями, проксируя её с адреса subscription-page выше. Приложения по-прежнему получают конфиг с origin. Требуется заданный адрес subscription-page. В режиме «Панель» страница отдаётся всегда, независимо от этого тумблера.</div></div>
+                <div class="set-info"><div class="set-t">Браузерную страницу брать с отдельного адреса (Зеркало)</div><div class="set-d">Только для режима «Зеркало». Тумблер направляет браузерные запросы (и <code>/assets</code>) на адрес subscription-page выше вместо origin; приложения продолжают получать конфиг с origin. Нужен лишь когда ваш origin отдаёт голый конфиг без HTML-страницы — тогда браузер получит страницу подписки. Если origin уже является subscription-page, он и так отдаёт страницу браузеру, и тумблер не требуется. Требуется заданный адрес subscription-page. На режим «Панель» не влияет.</div></div>
                 <label class="switch"><input type="checkbox" name="subpage_mirror" <?= subpage_mirror_active()?'checked':'' ?>><span class="sl"></span></label>
             </div>
             <?php $ua_keys_now = ua_hwid_keys(); $ua_key_meta = ['x-hwid' => 'идентификатор устройства (влияет на лимит)', 'x-device-os' => 'ОС устройства', 'x-ver-os' => 'версия ОС', 'x-device-model' => 'модель устройства']; ?>
