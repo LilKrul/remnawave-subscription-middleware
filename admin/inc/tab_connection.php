@@ -40,12 +40,16 @@
                 </select>
             </div>
             <div class="row">
-                <div><label>Адрес subscription-page (режим «Панель»)</label><input type="text" name="subpage_external_url" value="<?= h(subpage_external_url()) ?>" placeholder="https://panel.example.com или http://127.0.0.1:3010" <?= submw_in_docker() ? 'readonly' : '' ?>><div class="muted" style="font-size:.8rem;margin-top:.3rem">Рядом с панелью — адрес контейнера/loopback; на отдельном сервере — публичный https-адрес панели.</div></div>
+                <div><label>Адрес subscription-page (режимы «Панель» / «Зеркало»)</label><input type="text" name="subpage_external_url" value="<?= h(subpage_external_url()) ?>" placeholder="https://panel.example.com или http://127.0.0.1:3010" <?= submw_in_docker() ? 'readonly' : '' ?>><div class="muted" style="font-size:.8rem;margin-top:.3rem">Рядом с панелью — адрес контейнера/loopback; на отдельном сервере — публичный https-адрес панели. Используется как источник страницы подписки для браузера в обоих режимах.</div></div>
                 <div></div>
             </div>
             <div class="set-row">
                 <div class="set-info"><div class="set-t">Принимать ссылки <code>/api/sub/</code></div><div class="set-d">Разрешить входящие ссылки вида <code>/api/sub/&lt;shortUuid&gt;</code>. Такой запрос идёт на <b>домен панели</b> (URL панели выше) и обрабатывается как подписка — префикс не задваивается. Голые ссылки продолжают работать. Требуется заданный URL панели.</div></div>
                 <label class="switch"><input type="checkbox" name="apisub_accept" <?= apisub_accept_active()?'checked':'' ?>><span class="sl"></span></label>
+            </div>
+            <div class="set-row">
+                <div class="set-info"><div class="set-t">Отдавать страницу подписки (режим «Зеркало»)</div><div class="set-d">В режиме «Зеркало» открывать в браузере страницу подписки с инструкциями, проксируя её с адреса subscription-page выше. Приложения по-прежнему получают конфиг с origin. Требуется заданный адрес subscription-page. В режиме «Панель» страница отдаётся всегда, независимо от этого тумблера.</div></div>
+                <label class="switch"><input type="checkbox" name="subpage_mirror" <?= subpage_mirror_active()?'checked':'' ?>><span class="sl"></span></label>
             </div>
             <?php $ua_keys_now = ua_hwid_keys(); $ua_key_meta = ['x-hwid' => 'идентификатор устройства (влияет на лимит)', 'x-device-os' => 'ОС устройства', 'x-ver-os' => 'версия ОС', 'x-device-model' => 'модель устройства']; ?>
             <div class="set-row">

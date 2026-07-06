@@ -12,6 +12,14 @@ function apisub_accept_active() {
     return setting('apisub_accept', '0') === '1';
 }
 
+function subpage_mirror_active() {
+    return setting('subpage_mirror', '0') === '1';
+}
+
+function subpage_render_active() {
+    return subpage_active() || subpage_mirror_active();
+}
+
 function subpage_external_url() {
     return rtrim(trim((string) setting('subpage_external_url', '')), '/');
 }
@@ -77,7 +85,7 @@ function subpage_external_proxy($path, $query) {
 }
 
 function subpage_dispatch($path, $query) {
-    if (!subpage_active()) return false;
+    if (!subpage_render_active()) return false;
     if (subpage_external_url() === '') return false;
 
     $p  = '/' . ltrim($path, '/');
