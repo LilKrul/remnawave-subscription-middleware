@@ -1163,6 +1163,7 @@ window.LogPager=function(opts){
     var top   = document.getElementById(opts.topId);
     var bot   = opts.botId ? document.getElementById(opts.botId) : null;
     if(!body || !top) return null;
+    document.documentElement.classList.remove('lp');
     var size, page = 1;
     try { size = parseInt(localStorage.getItem(opts.storeKey),10); } catch(e){}
     if(isNaN(size) || sizes.indexOf(size)<0) size = 25;
