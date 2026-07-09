@@ -27,7 +27,7 @@
                     <label class="switch"><input type="checkbox" name="trust_header_expire" <?= trust_header_expire()?'checked':'' ?>><span class="sl"></span></label>
                 </div>
                 <div class="set-row">
-                    <div class="set-info"><div class="set-t">Проверять TLS-сертификат панели и origin</div><div class="set-d">Защита от MITM при запросах к панели и origin. <b>Выключение действует на все исходящие HTTPS-запросы прослойки</b> (панель, origin, доп-подписки, пересылка вебхуков, чат): любой сертификат принимается без проверки, и API-токен/cookie панели можно перехватить. Выключайте <b>только</b> при самоподписанном сертификате в доверенной сети — лучше поставьте валидный сертификат.</div></div>
+                    <div class="set-info"><div class="set-t">Проверять TLS-сертификат панели и origin <button type="button" class="qh" onclick="help('tls')" aria-label="Справка">?</button></div><div class="set-d">Защита от MITM при запросах к панели и origin. Выключайте только при самоподписанном сертификате.</div></div>
                     <label class="switch"><input type="checkbox" name="tls_verify" <?= api_tls_verify()?'checked':'' ?>><span class="sl"></span></label>
                 </div>
             </div>
