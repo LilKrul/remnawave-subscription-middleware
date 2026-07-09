@@ -31,25 +31,26 @@
                     <label class="switch"><input type="checkbox" name="tls_verify" <?= api_tls_verify()?'checked':'' ?>><span class="sl"></span></label>
                 </div>
             </div>
+            <?php $eff_mode = submw_in_docker() ? 'panel' : sub_source(); $show_mirror_row = ($eff_mode === 'mirror'); $show_url_row = ($eff_mode === 'panel' || subpage_mirror_active()); ?>
             <div class="set-row">
                 <div class="set-info"><div class="set-t">Источник подписки</div><div class="set-d">«Зеркало» — проксирование origin-домена (как раньше). «Панель» — прослойка сама становится подпиской (sub-сервис Remnawave): конфиги берутся с <code>/api/sub</code> панели, а в браузере рендерится страница подписки. Адрес панели — это контейнер/loopback (рядом с панелью) <b>или</b> публичный <code>https://</code>-домен (если прослойка на отдельном сервере).</div></div>
                 <?php if (submw_in_docker()): ?><input type="hidden" name="sub_source" value="panel"><?php endif; ?>
-                <select name="sub_source" <?= submw_in_docker() ? 'disabled' : '' ?>>
+                <select name="sub_source" id="subSourceSel" <?= submw_in_docker() ? 'disabled' : '' ?>>
                     <option value="mirror" <?= sub_source()==='mirror'?'selected':'' ?>>Зеркало (origin)</option>
                     <option value="panel" <?= sub_source()==='panel'?'selected':'' ?>>Панель (sub-сервис)</option>
                 </select>
             </div>
-            <div class="row">
+            <div class="set-row" id="rowSubpageMirror"<?= $show_mirror_row ? '' : ' style="display:none"' ?>>
+                <div class="set-info"><div class="set-t">Браузерную страницу брать с отдельного адреса (Зеркало)</div><div class="set-d">Только для режима «Зеркало». Тумблер направляет браузерные запросы (и <code>/assets</code>) на адрес subscription-page ниже вместо origin; приложения продолжают получать конфиг с origin. Нужен лишь когда ваш origin отдаёт голый конфиг без HTML-страницы — тогда браузер получит страницу подписки. Если origin уже является subscription-page, он и так отдаёт страницу браузеру, и тумблер не требуется. Требуется заданный адрес subscription-page. На режим «Панель» не влияет.</div></div>
+                <label class="switch"><input type="checkbox" name="subpage_mirror" id="subpageMirrorChk" <?= subpage_mirror_active()?'checked':'' ?>><span class="sl"></span></label>
+            </div>
+            <div class="row" id="rowSubpageUrl"<?= $show_url_row ? '' : ' style="display:none"' ?>>
                 <div><label>Адрес subscription-page (режимы «Панель» / «Зеркало»)</label><input type="text" name="subpage_external_url" value="<?= h(subpage_external_url()) ?>" placeholder="https://panel.example.com или http://127.0.0.1:3010" <?= submw_in_docker() ? 'readonly' : '' ?>><div class="muted" style="font-size:.8rem;margin-top:.3rem">Рядом с панелью — адрес контейнера/loopback; на отдельном сервере — публичный https-адрес панели. Используется как источник страницы подписки для браузера в обоих режимах.</div></div>
                 <div></div>
             </div>
             <div class="set-row">
                 <div class="set-info"><div class="set-t">Принимать ссылки <code>/api/sub/</code></div><div class="set-d">Разрешить входящие ссылки вида <code>/api/sub/&lt;shortUuid&gt;</code>. Такой запрос идёт на <b>домен панели</b> (URL панели выше) и обрабатывается как подписка — префикс не задваивается. Голые ссылки продолжают работать. Требуется заданный URL панели.</div></div>
                 <label class="switch"><input type="checkbox" name="apisub_accept" <?= apisub_accept_active()?'checked':'' ?>><span class="sl"></span></label>
-            </div>
-            <div class="set-row">
-                <div class="set-info"><div class="set-t">Браузерную страницу брать с отдельного адреса (Зеркало)</div><div class="set-d">Только для режима «Зеркало». Тумблер направляет браузерные запросы (и <code>/assets</code>) на адрес subscription-page выше вместо origin; приложения продолжают получать конфиг с origin. Нужен лишь когда ваш origin отдаёт голый конфиг без HTML-страницы — тогда браузер получит страницу подписки. Если origin уже является subscription-page, он и так отдаёт страницу браузеру, и тумблер не требуется. Требуется заданный адрес subscription-page. На режим «Панель» не влияет.</div></div>
-                <label class="switch"><input type="checkbox" name="subpage_mirror" <?= subpage_mirror_active()?'checked':'' ?>><span class="sl"></span></label>
             </div>
             <?php $ua_keys_now = ua_hwid_keys(); $ua_key_meta = ['x-hwid' => 'идентификатор устройства (влияет на лимит)', 'x-device-os' => 'ОС устройства', 'x-ver-os' => 'версия ОС', 'x-device-model' => 'модель устройства']; ?>
             <div class="set-row">
@@ -80,4 +81,22 @@
         .uahk-txt{min-width:0;display:flex;flex-direction:column;gap:.1rem;line-height:1.3}
         .uahk-txt .muted{font-size:.76rem}
     </style>
+    <script>
+    (function(){
+        var sel=document.getElementById('subSourceSel');
+        if(!sel) return;
+        var rowMirror=document.getElementById('rowSubpageMirror');
+        var rowUrl=document.getElementById('rowSubpageUrl');
+        var chk=document.getElementById('subpageMirrorChk');
+        function mode(){return sel.disabled?'panel':sel.value;}
+        function sync(){
+            var m=mode(), mir=chk&&chk.checked;
+            if(rowMirror) rowMirror.style.display=(m==='mirror')?'':'none';
+            if(rowUrl) rowUrl.style.display=(m==='panel'||mir)?'':'none';
+        }
+        sel.addEventListener('change',sync);
+        if(chk) chk.addEventListener('change',sync);
+        sync();
+    })();
+    </script>
 
