@@ -21,7 +21,7 @@
         <div class="rl-sum" id="rlSum" data-total-users="<?= (int) $rl_total_users ?>">📊 Сегодня, <?= h($rl_today_label) ?>: подписку обновили <b><?= (int) $rl_today_users ?></b><?= $rl_total_users ? (' из <b>' . (int) $rl_total_users . '</b>') : '' ?> пользователей · уникальных устройств (HWID) за сегодня: <b><?= (int) $rl_today_devices ?></b><?= $rl_total_devices ? (' из <b>' . (int) $rl_total_devices . '</b> известных в логе') : '' ?>.</div>
         <table class="logtbl" style="margin-top:1rem">
             <thead><tr><th>Время</th><th>Решение</th><th>Пользователь</th><th>IP</th><th>expire</th><th>Клиент</th></tr></thead>
-            <tbody id="rlBody">
+            <tbody id="rlBody" class="lp-cap">
             <?php foreach ($reqlog as $r):
                 $su = (string) $r['short_uuid'];
                 $uname = ($su !== '' && isset($short2name[$su])) ? $short2name[$su] : '';

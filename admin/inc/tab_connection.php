@@ -27,28 +27,33 @@
                     <label class="switch"><input type="checkbox" name="trust_header_expire" <?= trust_header_expire()?'checked':'' ?>><span class="sl"></span></label>
                 </div>
                 <div class="set-row">
-                    <div class="set-info"><div class="set-t">Проверять TLS-сертификат панели и origin</div><div class="set-d">Защита от MITM при запросах к панели и origin. <b>Выключение действует на все исходящие HTTPS-запросы прослойки</b> (панель, origin, доп-подписки, пересылка вебхуков, чат): любой сертификат принимается без проверки, и API-токен/cookie панели можно перехватить. Выключайте <b>только</b> при самоподписанном сертификате в доверенной сети — лучше поставьте валидный сертификат.</div></div>
+                    <div class="set-info"><div class="set-t">Проверять TLS-сертификат панели и origin <button type="button" class="qh" onclick="help('tls')" aria-label="Справка">?</button></div><div class="set-d">Защита от MITM при запросах к панели и origin. Выключайте только при самоподписанном сертификате.</div></div>
                     <label class="switch"><input type="checkbox" name="tls_verify" <?= api_tls_verify()?'checked':'' ?>><span class="sl"></span></label>
                 </div>
             </div>
+            <?php $eff_mode = submw_in_docker() ? 'panel' : sub_source(); $show_url_row = ($eff_mode === 'panel'); ?>
             <div class="set-row">
                 <div class="set-info"><div class="set-t">Источник подписки</div><div class="set-d">«Зеркало» — проксирование origin-домена (как раньше). «Панель» — прослойка сама становится подпиской (sub-сервис Remnawave): конфиги берутся с <code>/api/sub</code> панели, а в браузере рендерится страница подписки. Адрес панели — это контейнер/loopback (рядом с панелью) <b>или</b> публичный <code>https://</code>-домен (если прослойка на отдельном сервере).</div></div>
                 <?php if (submw_in_docker()): ?><input type="hidden" name="sub_source" value="panel"><?php endif; ?>
-                <select name="sub_source" <?= submw_in_docker() ? 'disabled' : '' ?>>
+                <select name="sub_source" id="subSourceSel" <?= submw_in_docker() ? 'disabled' : '' ?>>
                     <option value="mirror" <?= sub_source()==='mirror'?'selected':'' ?>>Зеркало (origin)</option>
                     <option value="panel" <?= sub_source()==='panel'?'selected':'' ?>>Панель (sub-сервис)</option>
                 </select>
             </div>
-            <div class="row">
-                <div><label>Адрес subscription-page (режим «Панель»)</label><input type="text" name="subpage_external_url" value="<?= h(subpage_external_url()) ?>" placeholder="https://panel.example.com или http://127.0.0.1:3010" <?= submw_in_docker() ? 'readonly' : '' ?>><div class="muted" style="font-size:.8rem;margin-top:.3rem">Рядом с панелью — адрес контейнера/loopback; на отдельном сервере — публичный https-адрес панели.</div></div>
+            <div class="row" id="rowSubpageUrl"<?= $show_url_row ? '' : ' style="display:none"' ?>>
+                <div><label>Адрес subscription-page (режимы «Панель» / «Зеркало»)</label><input type="text" name="subpage_external_url" value="<?= h(subpage_external_url()) ?>" placeholder="https://panel.example.com или http://127.0.0.1:3010" <?= submw_in_docker() ? 'readonly' : '' ?>><div class="muted" style="font-size:.8rem;margin-top:.3rem">Рядом с панелью — адрес контейнера/loopback; на отдельном сервере — публичный https-адрес панели. Используется как источник страницы подписки для браузера в обоих режимах.</div></div>
                 <div></div>
+            </div>
+            <div class="set-row">
+                <div class="set-info"><div class="set-t">Ссылки в формате <code>/api/sub/</code></div><div class="set-d">Показывать ссылки подписки во вкладке «Пользователи» как <code>/api/sub/&lt;shortUuid&gt;</code> вместо голого <code>/&lt;shortUuid&gt;</code>. Нужно, если по голой ссылке origin не отдаёт страницу подписки, а по <code>/api/sub/&lt;shortUuid&gt;</code> — отдаёт.</div></div>
+                <label class="switch"><input type="checkbox" name="sub_link_apisub" <?= sub_link_apisub()?'checked':'' ?>><span class="sl"></span></label>
             </div>
             <?php $ua_keys_now = ua_hwid_keys(); $ua_key_meta = ['x-hwid' => 'идентификатор устройства (влияет на лимит)', 'x-device-os' => 'ОС устройства', 'x-ver-os' => 'версия ОС', 'x-device-model' => 'модель устройства']; ?>
             <div class="set-row">
                 <div class="set-info"><div class="set-t">HWID из User-Agent <button type="button" class="qh" onclick="help('uahwid')" aria-label="Справка">?</button></div><div class="set-d">Если клиент (v2rayNG, Clash) не умеет слать HTTP-заголовки, но даёт менять User-Agent — извлекать device-заголовки из строки вида <code>...; x-hwid=значение; ...)</code> и форвардить на панель. Реальный заголовок всегда главнее. <b>Внимание:</b> User-Agent задаётся пользователем вручную, поэтому <code>x-hwid</code> так можно подменить — это ослабляет лимит устройств; HWID здесь удобство, не защита. Держите выключенным, если не требуется.</div></div>
-                <label class="switch"><input type="checkbox" name="ua_hwid_parse" <?= ua_hwid_parse() ? 'checked' : '' ?>><span class="sl"></span></label>
+                <label class="switch"><input type="checkbox" name="ua_hwid_parse" <?= ua_hwid_parse() ? 'checked' : '' ?> onchange="document.getElementById('uahkBlock').style.display=this.checked?'block':'none'"><span class="sl"></span></label>
             </div>
-            <div class="set-row" style="display:block">
+            <div class="set-row" id="uahkBlock" style="display:<?= ua_hwid_parse() ? 'block' : 'none' ?>">
                 <div class="set-info" style="margin-bottom:.65rem"><div class="set-t">Какие ключи извлекать</div><div class="set-d">Отмеченные заголовки берутся из User-Agent, когда настоящего заголовка в запросе нет.</div></div>
                 <div class="uahk-grid">
                     <?php foreach ($ua_key_meta as $uk => $ud): ?>
@@ -72,4 +77,17 @@
         .uahk-txt{min-width:0;display:flex;flex-direction:column;gap:.1rem;line-height:1.3}
         .uahk-txt .muted{font-size:.76rem}
     </style>
+    <script>
+    (function(){
+        var sel=document.getElementById('subSourceSel');
+        if(!sel) return;
+        var rowUrl=document.getElementById('rowSubpageUrl');
+        function mode(){return sel.disabled?'panel':sel.value;}
+        function sync(){
+            if(rowUrl) rowUrl.style.display=(mode()==='panel')?'':'none';
+        }
+        sel.addEventListener('change',sync);
+        sync();
+    })();
+    </script>
 

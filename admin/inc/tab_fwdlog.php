@@ -13,7 +13,7 @@
         <p class="muted">Исходящие пересылки вебхука адресатам («тройник»). <code>ok</code> = адресат ответил 2xx. Настройка — во вкладке <a href="?tab=webhooks" style="color:var(--accent-text)">Вебхуки → Раздвоение</a>.</p>
         <table class="logtbl" style="margin-top:1rem">
             <tr><th>Время</th><th>Событие</th><th>Адресат</th><th>Код</th><th>Результат</th><th>Ошибка</th></tr>
-            <tbody id="flBody">
+            <tbody id="flBody" class="lp-cap">
             <?php foreach ($fwdlog as $r): ?>
             <tr>
                 <td class="muted"><?= h($r['ts']) ?></td>

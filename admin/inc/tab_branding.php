@@ -7,8 +7,8 @@
             <input type="hidden" name="csrf" value="<?= h($token) ?>">
             <input type="hidden" name="action" value="save_branding">
             <div class="row">
-                <div><label>Имя сервиса <span class="hint">ручное; пусто = из панели</span></label><input type="text" name="service_name" value="<?= h(setting('service_name','')) ?>" placeholder="пусто = из панели"></div>
-                <div><label>URL лого <span class="hint">ручное; пусто = из панели</span></label><input type="text" name="service_logo_url" value="<?= h(setting('service_logo_url','')) ?>" placeholder="пусто = из панели"></div>
+                <div><label>Имя сервиса <span class="hint">вручную; пусто — берётся из панели</span></label><input type="text" name="service_name" value="<?= h(setting('service_name','')) ?>" placeholder="пусто = из панели"></div>
+                <div><label>URL лого <span class="hint">вручную; пусто — берётся из панели</span></label><input type="text" name="service_logo_url" value="<?= h(setting('service_logo_url','')) ?>" placeholder="пусто = из панели"></div>
             </div>
             <?php if ($brand_icon !== ''): ?>
             <div style="margin-top:.85rem;display:flex;align-items:center;gap:.6rem">

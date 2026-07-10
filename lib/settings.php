@@ -24,6 +24,8 @@ function trust_header_expire() { return setting('trust_header_expire', '1') === 
 
 function api_tls_verify() { return setting('tls_verify', '1') === '1'; }
 
+function sub_link_apisub() { return setting('sub_link_apisub', '0') === '1'; }
+
 function ua_hwid_parse() { return setting('ua_hwid_parse', '0') === '1'; }
 
 function ua_hwid_keys_all() { return ['x-hwid', 'x-device-os', 'x-ver-os', 'x-device-model']; }

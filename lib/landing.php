@@ -53,11 +53,23 @@ function landing_login_script() {
     <?php
 }
 
+function landing_fp_pick($fp, $salt, $arr) {
+    return $arr[hexdec(substr(sha1($fp . $salt), 0, 7)) % count($arr)];
+}
+
 function landing_render() {
     $preset = landing_preset();
     $fp = landing_fp();
-    $fp_titles = ['Личный кабинет — Вход', 'Вход в личный кабинет', 'Личный кабинет', 'Авторизация', 'Вход — личный кабинет', 'Кабинет — авторизация', 'Вход в систему'];
-    $fp_title = $fp_titles[hexdec(substr($fp, 0, 4)) % count($fp_titles)];
+    $fp_titles = ['Личный кабинет — Вход', 'Вход в личный кабинет', 'Личный кабинет', 'Авторизация', 'Вход — личный кабинет', 'Кабинет — авторизация', 'Вход в систему', 'Личный кабинет — авторизация', 'Вход в кабинет', 'Кабинет пользователя', 'Доступ к кабинету', 'Личный профиль — вход', 'Мой аккаунт — вход', 'Вход — аккаунт'];
+    $fp_title = landing_fp_pick($fp, 't', $fp_titles);
+    $fp_desc = landing_fp_pick($fp, 'd', ['Вход в личный кабинет.', 'Авторизация в личном кабинете.', 'Доступ к личному кабинету пользователя.', 'Войдите в свой аккаунт для продолжения.', 'Личный кабинет пользователя.', 'Страница входа в систему.', 'Авторизация для доступа к аккаунту.']);
+    $fp_brand = landing_fp_pick($fp, 'br', ['Личный кабинет', 'Кабинет пользователя', 'Личный профиль', 'Мой аккаунт', 'Личная панель', 'Кабинет клиента', 'Аккаунт']);
+    $fp_sub = landing_fp_pick($fp, 'sb', ['Вход в аккаунт', 'Войдите, чтобы продолжить', 'Введите данные для входа', 'Авторизация', 'Доступ к кабинету', 'Вход в систему', 'Войдите в свой аккаунт']);
+    $fp_welcome = landing_fp_pick($fp, 'wl', ['С возвращением', 'Рады видеть вас снова', 'Здравствуйте', 'Добро пожаловать', 'С возвращением в кабинет']);
+    $fp_btn = landing_fp_pick($fp, 'bt', ['Войти', 'Вход', 'Продолжить', 'Войти в кабинет', 'Авторизоваться']);
+    $fp_tc = landing_fp_pick($fp, 'tc', ['#0f9f90', '#0b1020', '#f4f7fb', '#0f766e', '#ffffff', '#111827']);
+    $fp_hue = hexdec(substr(sha1($fp . 'h'), 0, 3)) % 360;
+    $fp_ico = rawurlencode('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="hsl(' . $fp_hue . ',58%,46%)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 3v5c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6z"/><path d="M9.5 12l1.8 1.8L15 9.8"/></svg>');
     $fp_v = substr(sha1($fp), 0, 8);
     $fp_b = substr(sha1($fp . 'b'), 0, 12);
     echo "<!DOCTYPE html>\n";
@@ -67,8 +79,12 @@ function landing_render() {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="robots" content="noindex, nofollow">
+    <meta name="description" content="<?= htmlspecialchars($fp_desc, ENT_QUOTES) ?>">
+    <meta name="theme-color" content="<?= $fp_tc ?>">
+    <meta name="color-scheme" content="light dark">
     <meta name="build" content="<?= $fp_b ?>">
-    <title><?= $fp_title ?></title>
+    <link rel="icon" href="data:image/svg+xml,<?= $fp_ico ?>">
+    <title><?= htmlspecialchars($fp_title, ENT_QUOTES) ?></title>
 <?php if ($preset === 2): ?>
     <style>
         :root{--accent:#4f46e5;--accent-h:#4338ca;--ink:#0f172a;--muted:#64748b;--line:#e2e8f0;--err:#ef4444}
@@ -94,12 +110,22 @@ function landing_render() {
         .btn:hover{background:var(--accent-h)}
         .err{color:var(--err);font-size:.82rem;margin-top:.9rem;text-align:center;min-height:1.1rem;display:none}
         @media(max-width:760px){.lp-side{display:none}}
+        .lp-side{background:linear-gradient(145deg,#0f766e,#2563eb 55%,#7c3aed);position:relative;overflow:hidden}
+        .lp-side::after{content:"";position:absolute;inset:auto 2rem 2rem 2rem;height:1px;background:rgba(255,255,255,.26)}
+        .lp-side .ic,.lp-feat span{border:1px solid rgba(255,255,255,.24);box-shadow:0 18px 48px rgba(15,23,42,.22)}
+        .lp-main{background:#f4f7fb}
+        .lp-form{background:#fff;border:1px solid #dbe3ee;border-radius:8px;padding:2rem;box-shadow:0 18px 42px rgba(15,23,42,.10)}
+        input,.btn{border-radius:8px}
+        .btn{background:#0f9f90}
+        .btn:hover{background:#0b8277}
+        @media(max-width:760px){body{background:#f4f7fb}.lp-side{display:none}.lp-main{min-height:100vh}.lp-form{max-width:420px}}
+        @media(max-width:460px){.lp-main{padding:1rem}.lp-form{padding:1.25rem}}
     </style>
 </head>
 <body>
     <div class="lp-side">
         <span class="ic"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 3v5c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6z"/><path d="M9.5 12l1.8 1.8L15 9.8"/></svg></span>
-        <h2>Личный кабинет</h2>
+        <h2><?= htmlspecialchars($fp_brand, ENT_QUOTES) ?></h2>
         <p>Управляйте вашим аккаунтом, подпиской и устройствами в одном месте.</p>
         <div class="lp-feat">
             <div><span>✓</span> Безопасный вход и защита аккаунта</div>
@@ -109,12 +135,12 @@ function landing_render() {
     </div>
     <div class="lp-main">
         <div class="lp-form js-shake">
-            <h1>С возвращением</h1>
-            <p class="sub">Войдите, чтобы продолжить</p>
+            <h1><?= htmlspecialchars($fp_welcome, ENT_QUOTES) ?></h1>
+            <p class="sub"><?= htmlspecialchars($fp_sub, ENT_QUOTES) ?></p>
             <form id="loginForm">
                 <div class="fg"><label for="email">Email</label><input type="email" id="email" required placeholder="name@example.com"></div>
                 <div class="fg"><label for="password">Пароль</label><input type="password" id="password" required placeholder="••••••••••••••"><div class="hint">Минимум 14 символов</div></div>
-                <button type="submit" class="btn" id="loginBtn">Войти</button>
+                <button type="submit" class="btn" id="loginBtn"><?= htmlspecialchars($fp_btn, ENT_QUOTES) ?></button>
                 <div id="loginError" class="err"></div>
             </form>
         </div>
@@ -138,19 +164,24 @@ function landing_render() {
         .btn{width:100%;padding:.85rem;background:linear-gradient(120deg,var(--accent),#22d3ee);color:#fff;border:0;border-radius:10px;font-size:.95rem;font-weight:600;cursor:pointer;transition:filter .15s}
         .btn:hover{filter:brightness(1.07)}
         .err{color:var(--err);font-size:.82rem;margin-top:.9rem;text-align:center;min-height:1.1rem;display:none}
+        body{background:#0b1020;background-image:linear-gradient(180deg,rgba(20,184,166,.12),transparent 42%)}
+        .card{border-radius:8px;border-color:rgba(148,163,184,.18);box-shadow:0 24px 70px rgba(0,0,0,.42),0 1px 0 rgba(255,255,255,.05) inset}
+        .brand .ic,input,.btn{border-radius:8px}
+        .btn{background:linear-gradient(120deg,#0f9f90,#2563eb)}
+        @media(max-width:460px){body{padding:.9rem}.card{padding:1.45rem}}
     </style>
 </head>
 <body>
     <div class="card js-shake">
         <div class="brand">
             <span class="ic"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 3v5c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6z"/><path d="M9.5 12l1.8 1.8L15 9.8"/></svg></span>
-            <h1>Личный кабинет</h1>
-            <p>Вход в аккаунт</p>
+            <h1><?= htmlspecialchars($fp_brand, ENT_QUOTES) ?></h1>
+            <p><?= htmlspecialchars($fp_sub, ENT_QUOTES) ?></p>
         </div>
         <form id="loginForm">
             <div class="fg"><label for="email">Email</label><input type="email" id="email" required placeholder="name@example.com"></div>
             <div class="fg"><label for="password">Пароль</label><input type="password" id="password" required placeholder="••••••••••••••"><div class="hint">Минимум 14 символов</div></div>
-            <button type="submit" class="btn" id="loginBtn">Войти</button>
+            <button type="submit" class="btn" id="loginBtn"><?= htmlspecialchars($fp_btn, ENT_QUOTES) ?></button>
             <div id="loginError" class="err"></div>
         </form>
     </div>
@@ -174,20 +205,25 @@ function landing_render() {
         .btn:hover{background:var(--accent-h)}
         .err{color:var(--err);font-size:.82rem;margin-top:.9rem;text-align:center;min-height:1.1rem;display:none}
         .foot{margin-top:1.5rem;font-size:.78rem;color:var(--muted);text-align:center}
+        body{background:linear-gradient(180deg,#eef6f5,#f8fafc)}
+        .brand .ic{background:#0f9f90}
+        .card{border-radius:8px;box-shadow:0 18px 44px rgba(15,23,42,.09)}
+        input,.btn{border-radius:8px}
+        @media(max-width:460px){body{padding:1rem}.card{padding:1.35rem}.brand{margin-bottom:1rem}}
     </style>
 </head>
 <body>
     <div class="brand">
         <span class="ic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 3v5c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6z"/><path d="M9.5 12l1.8 1.8L15 9.8"/></svg></span>
-        <b>Личный кабинет</b>
+        <b><?= htmlspecialchars($fp_brand, ENT_QUOTES) ?></b>
     </div>
     <div class="card js-shake">
-        <h1>Вход в аккаунт</h1>
+        <h1><?= htmlspecialchars($fp_sub, ENT_QUOTES) ?></h1>
         <p class="sub">Введите данные для входа</p>
         <form id="loginForm">
             <div class="fg"><label for="email">Email</label><input type="email" id="email" required placeholder="name@example.com"></div>
             <div class="fg"><label for="password">Пароль</label><input type="password" id="password" required placeholder="••••••••••••••"><div class="hint">Минимум 14 символов</div></div>
-            <button type="submit" class="btn" id="loginBtn">Войти</button>
+            <button type="submit" class="btn" id="loginBtn"><?= htmlspecialchars($fp_btn, ENT_QUOTES) ?></button>
             <div id="loginError" class="err"></div>
         </form>
     </div>
@@ -217,14 +253,23 @@ function landing_render() {
         .note{background:#f3f4ff;border:1px solid #e0e3ff;border-radius:10px;padding:.9rem 1rem;font-size:.86rem;color:#4338ca;line-height:1.5}
         .sub{text-align:center;font-size:.84rem;color:var(--muted);margin-top:.8rem}
         .hidden{display:none}
+        body{background:linear-gradient(180deg,#eef6f5,#f4f7fb)}
+        .card{border-radius:8px;border-color:#dbe3ee;box-shadow:0 18px 44px rgba(15,23,42,.10)}
+        .brand .ic{background:linear-gradient(150deg,#0f9f90,#2563eb);border-radius:8px}
+        .tabs,input,.btn,.note{border-radius:8px}
+        .tab{border-radius:6px}
+        .btn{background:#0f9f90}
+        .btn:hover{background:#0b8277}
+        .note{background:#eef6ff;border-color:#dbeafe;color:#1d4ed8}
+        @media(max-width:460px){body{padding:1rem}.card{padding:1.35rem}}
     </style>
 </head>
 <body>
 <div class="card js-shake">
     <div class="brand">
         <span class="ic"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 3v5c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6z"/><path d="M9.5 12l1.8 1.8L15 9.8"/></svg></span>
-        <h1>Личный кабинет</h1>
-        <p>Вход в аккаунт</p>
+        <h1><?= htmlspecialchars($fp_brand, ENT_QUOTES) ?></h1>
+        <p><?= htmlspecialchars($fp_sub, ENT_QUOTES) ?></p>
     </div>
     <div class="tabs">
         <div class="tab active" onclick="switchTab('login')">Вход</div>
@@ -234,7 +279,7 @@ function landing_render() {
         <form id="loginForm">
             <div class="fg"><label for="email">Email</label><input type="email" id="email" required placeholder="name@example.com"></div>
             <div class="fg"><label for="password">Пароль</label><input type="password" id="password" required placeholder="••••••••••••••"><div class="hint">Минимум 14 символов</div></div>
-            <button type="submit" class="btn" id="loginBtn">Войти</button>
+            <button type="submit" class="btn" id="loginBtn"><?= htmlspecialchars($fp_btn, ENT_QUOTES) ?></button>
             <div id="loginError" class="err"></div>
         </form>
     </div>

@@ -168,6 +168,75 @@ if (($sqcfg_sizing['rows'] ?? []) && $wgp_ts > 0) {
         </div>
     </section>
 
+    <section class="<?= coll_cls('wgpool_uarules') ?>" data-coll="wgpool_uarules">
+        <button type="button" class="coll-head" onclick="collToggle(this)"><span>Правила отдачи по UA</span>
+            <span class="coll-hr"><svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></span>
+        </button>
+        <div class="coll-body">
+            <p class="muted" style="margin-top:0">Клиент определяется по подстроке в его User-Agent. Если UA подходит под правило, отмеченный тип конфигов ему <b>не отдаётся и не занимает слот пула</b>. AmneziaWG умеют только клиенты на ядре <b>mihomo (Clash)</b> и нативные wg://-клиенты (Throne); на ядрах <b>xray</b> и <b>sing-box</b> обфускации нет — таким идёт обычный WireGuard. Галочки можно менять, правила — дописывать своими UA.</p>
+            <form method="post" autocomplete="off">
+                <input type="hidden" name="csrf" value="<?= h($token) ?>">
+                <input type="hidden" name="action" value="save_ua_rules">
+                <div class="ua-rules-wrap">
+                <table class="logtbl ua-rules-tbl" id="uaRulesTbl">
+                    <thead><tr><th>Клиент</th><th>UA содержит</th><th>Ядро</th><th class="ua-c">Без AWG</th><th class="ua-c">Без WG</th><th class="ua-c"></th></tr></thead>
+                    <tbody>
+                    <?php $uar = squadconf_ua_rules(); $ri = 0; foreach ($uar as $r): ?>
+                        <tr>
+                            <td><input type="text" name="rule_label[<?= $ri ?>]" value="<?= h($r['label']) ?>" maxlength="60" placeholder="Название"></td>
+                            <td><input type="text" name="rule_ua[<?= $ri ?>]" value="<?= h($r['ua']) ?>" maxlength="60" placeholder="напр. happ" class="ua-mono"></td>
+                            <td><input type="text" name="rule_core[<?= $ri ?>]" value="<?= h($r['core']) ?>" maxlength="24" placeholder="—" class="ua-core"></td>
+                            <td class="ua-c"><input type="checkbox" class="ua-ck" name="rule_no_awg[<?= $ri ?>]" value="1"<?= !empty($r['no_awg']) ? ' checked' : '' ?>></td>
+                            <td class="ua-c"><input type="checkbox" class="ua-ck" name="rule_no_wg[<?= $ri ?>]" value="1"<?= !empty($r['no_wg']) ? ' checked' : '' ?>></td>
+                            <td class="ua-c"><button type="button" class="danger ua-del" title="Удалить строку">🗑</button></td>
+                        </tr>
+                    <?php $ri++; endforeach; ?>
+                    </tbody>
+                </table>
+                </div>
+                <div style="display:flex;gap:.6rem;align-items:center;flex-wrap:wrap;margin-top:1rem">
+                    <button type="submit" class="btn">Сохранить правила</button>
+                    <button type="button" class="sqcfg-btn" id="uaAddRow">+ Клиент</button>
+                    <button type="submit" class="sqcfg-btn" name="reset" value="1" onclick="return confirm('Сбросить правила отдачи к стандартным?')">Сбросить к стандартным</button>
+                </div>
+            </form>
+        </div>
+    </section>
+    <style>
+        .ua-rules-wrap{overflow-x:auto}
+        .ua-rules-tbl td{vertical-align:middle}
+        .ua-rules-tbl input[type="text"]{width:100%;box-sizing:border-box;font-size:.82rem;padding:.35rem .5rem;background:var(--bg2);border:1px solid var(--line);border-radius:7px;color:var(--text)}
+        .ua-rules-tbl .ua-mono{font-family:monospace}
+        .ua-rules-tbl .ua-core{max-width:8rem}
+        .ua-rules-tbl .ua-c{text-align:center;white-space:nowrap;width:1%}
+        .ua-rules-tbl .ua-del{padding:.3rem .55rem}
+        .ua-rules-tbl .ua-ck{width:18px;height:18px;accent-color:var(--accent);cursor:pointer;margin:0}
+    </style>
+    <script>
+    (function(){
+        var tbl=document.getElementById('uaRulesTbl'); if(!tbl) return;
+        var tb=tbl.querySelector('tbody');
+        var nextIdx=tb.querySelectorAll('tr').length;
+        function rowHtml(i){
+            return '<td><input type="text" name="rule_label['+i+']" maxlength="60" placeholder="Название"></td>'
+                +'<td><input type="text" name="rule_ua['+i+']" maxlength="60" placeholder="напр. happ" class="ua-mono"></td>'
+                +'<td><input type="text" name="rule_core['+i+']" maxlength="24" placeholder="—" class="ua-core"></td>'
+                +'<td class="ua-c"><input type="checkbox" class="ua-ck" name="rule_no_awg['+i+']" value="1"></td>'
+                +'<td class="ua-c"><input type="checkbox" class="ua-ck" name="rule_no_wg['+i+']" value="1"></td>'
+                +'<td class="ua-c"><button type="button" class="danger ua-del" title="Удалить строку">🗑</button></td>';
+        }
+        var add=document.getElementById('uaAddRow');
+        if(add) add.addEventListener('click',function(){
+            var tr=document.createElement('tr'); tr.innerHTML=rowHtml(nextIdx++); tb.appendChild(tr);
+            var inp=tr.querySelector('input[name^="rule_label"]'); if(inp) inp.focus();
+        });
+        tb.addEventListener('click',function(e){
+            var b=e.target.closest?e.target.closest('.ua-del'):null;
+            if(b){ var tr=b.closest('tr'); if(tr) tr.parentNode.removeChild(tr); }
+        });
+    })();
+    </script>
+
     <section class="<?= coll_cls('wgpool_manual') ?>" data-coll="wgpool_manual">
         <button type="button" class="coll-head" onclick="collToggle(this)"><span>Ручная привязка конфига</span>
             <span class="coll-hr"><svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></span>
@@ -496,7 +565,7 @@ if (($sqcfg_sizing['rows'] ?? []) && $wgp_ts > 0) {
             if (ua) lines.push('UA: ' + ua);
             var tip = lines.join('\n');
             var dev = hw
-                ? ('<span class="wg-issued-dev">(' + ico('device') + ico(osFile(plat)) + ')</span>')
+                ? ('<span class="wg-issued-dev">(' + ico(osFile(plat)) + ')</span>')
                 : ('<span class="muted" style="font-size:.72rem">(на польз.)</span>');
             var cliTag = cli ? (' <span class="wg-cli">' + esc(cli) + '</span>') : '';
             c.innerHTML = '<span class="wg-tip" data-tip="'+esc(tip)+'"><span class="wg-issued-name">'+esc(disp)+'</span> '+dev+cliTag+(man?' <span class="muted">🔧</span>':'')+'</span>';

@@ -12,13 +12,19 @@ $parsed_url  = parse_url($request_uri);
 $path        = isset($parsed_url['path']) ? ltrim($parsed_url['path'], '/') : '';
 $query       = isset($parsed_url['query']) ? $parsed_url['query'] : '';
 
+$apisub_in = false;
+if ($path !== '' && apisub_accept_active() && remnawave_url() !== '' && preg_match('~^api/sub/(.+)~is', $path, $m)) {
+    $path = $m[1];
+    $apisub_in = true;
+}
+
 if (empty($path) || $path === 'index.php') {
     header('X-Robots-Tag: noindex, nofollow');
     landing_render();
     exit();
 }
 
-if (subpage_dispatch($path, $query)) {
+if (!$apisub_in && subpage_dispatch($path, $query)) {
     exit();
 }
 
@@ -42,7 +48,8 @@ $skip_log =
     || preg_match('~^(app|api|backend|frontend|server|config|credentials|secrets|keyfile|phpinfo\.php|wp-login\.php|wp-admin|xmlrpc\.php)$~i', $path)
     || preg_match('~(^|/)(favicon\.ico|robots\.txt|sitemap\.xml|browserconfig\.xml|apple-touch-icon[\w-]*\.png)$~i', $path);
 
-if (subpage_active()) {
+$to_panel = subpage_active() || $apisub_in;
+if ($to_panel) {
     $target_url = remnawave_url() . '/api/sub/' . $path;
 } else {
     $target_url = 'https://' . $target_domain . '/' . $path;
@@ -50,7 +57,7 @@ if (subpage_active()) {
 if ($query) $target_url .= '?' . $query;
 
 $request_headers = [];
-$strip_fwd = subpage_active();
+$strip_fwd = $to_panel;
 if (function_exists('getallheaders')) {
     foreach (getallheaders() as $key => $value) {
         $lk = strtolower($key);
@@ -70,7 +77,7 @@ if (function_exists('getallheaders')) {
     }
 }
 
-if (subpage_active()) {
+if ($to_panel) {
     if (strpos(remnawave_url(), 'http://') === 0) {
         $request_headers[] = 'x-forwarded-proto: https';
         $request_headers[] = 'x-forwarded-for: 127.0.0.1';
