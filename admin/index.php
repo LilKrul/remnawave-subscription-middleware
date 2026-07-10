@@ -552,6 +552,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && is_auth()) {
         set_setting('subpage_external_url', rtrim(trim($_POST['subpage_external_url'] ?? ''), '/'));
         set_setting('apisub_accept', isset($_POST['apisub_accept']) ? '1' : '0');
         set_setting('subpage_mirror', isset($_POST['subpage_mirror']) ? '1' : '0');
+        set_setting('sub_link_apisub', isset($_POST['sub_link_apisub']) ? '1' : '0');
         set_setting('ua_hwid_parse', isset($_POST['ua_hwid_parse']) ? '1' : '0');
         $ua_keys = [];
         foreach ((array) ($_POST['ua_hwid_keys'] ?? []) as $uk) {

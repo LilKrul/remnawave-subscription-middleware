@@ -54,7 +54,7 @@ $ico_eyeoff = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke
                 $exp_ts = !empty($u['expireAt']) ? strtotime((string) $u['expireAt']) : null;
                 if ($exp_ts === false) $exp_ts = null;
                 $exp = $exp_ts !== null ? (date('Y-m-d', $exp_ts) . ' в ' . date('H:i', $exp_ts)) : '—';
-                $mirror_link = ($mirror !== '' && $su !== '') ? ('https://' . $mirror . '/' . $su) : '';
+                $mirror_link = ($mirror !== '' && $su !== '') ? ('https://' . $mirror . '/' . (sub_link_apisub() ? 'api/sub/' : '') . $su) : '';
                 $ov  = $ov_index[$su] ?? null;
                 $ovr = $ov['reason'] ?? '';
 
