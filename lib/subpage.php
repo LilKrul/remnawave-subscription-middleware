@@ -12,6 +12,10 @@ function apisub_accept_active() {
     return setting('apisub_accept', '0') === '1';
 }
 
+function mask_notfound() {
+    return setting('mask_notfound', '0') === '1';
+}
+
 function subpage_mirror_active() {
     return setting('subpage_mirror', '0') === '1';
 }
@@ -74,6 +78,7 @@ function subpage_external_proxy($path, $query) {
     curl_close($ch);
 
     if ($err) { http_response_code(502); return; }
+    if (mask_notfound() && $code === 404) { http_response_code(502); return; }
 
     http_response_code($code ?: 200);
     $unsafe = ['transfer-encoding', 'content-length', 'content-encoding', 'connection'];

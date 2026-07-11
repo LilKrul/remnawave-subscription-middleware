@@ -48,6 +48,10 @@
                 <div class="set-info"><div class="set-t">Ссылки в формате <code>/api/sub/</code></div><div class="set-d">Показывать ссылки подписки во вкладке «Пользователи» как <code>/api/sub/&lt;shortUuid&gt;</code> вместо голого <code>/&lt;shortUuid&gt;</code>. Нужно, если по голой ссылке origin не отдаёт страницу подписки, а по <code>/api/sub/&lt;shortUuid&gt;</code> — отдаёт.</div></div>
                 <label class="switch"><input type="checkbox" name="sub_link_apisub" <?= sub_link_apisub()?'checked':'' ?>><span class="sl"></span></label>
             </div>
+            <div class="set-row">
+                <div class="set-info"><div class="set-t">Маскировать 404 под 502</div><div class="set-d">Любой ответ <b>404</b> (неизвестный путь, несуществующий UUID подписки) отдаётся как <b>502 Bad Gateway</b> с пустым телом — сервис не подаёт виду, что за ним что-то есть. Держите выключенным, если клиентам нужен настоящий 404.</div></div>
+                <label class="switch"><input type="checkbox" name="mask_notfound" <?= mask_notfound()?'checked':'' ?>><span class="sl"></span></label>
+            </div>
             <?php $ua_keys_now = ua_hwid_keys(); $ua_key_meta = ['x-hwid' => 'идентификатор устройства (влияет на лимит)', 'x-device-os' => 'ОС устройства', 'x-ver-os' => 'версия ОС', 'x-device-model' => 'модель устройства']; ?>
             <div class="set-row">
                 <div class="set-info"><div class="set-t">HWID из User-Agent <button type="button" class="qh" onclick="help('uahwid')" aria-label="Справка">?</button></div><div class="set-d">Если клиент (v2rayNG, Clash) не умеет слать HTTP-заголовки, но даёт менять User-Agent — извлекать device-заголовки из строки вида <code>...; x-hwid=значение; ...)</code> и форвардить на панель. Реальный заголовок всегда главнее. <b>Внимание:</b> User-Agent задаётся пользователем вручную, поэтому <code>x-hwid</code> так можно подменить — это ослабляет лимит устройств; HWID здесь удобство, не защита. Держите выключенным, если не требуется.</div></div>
