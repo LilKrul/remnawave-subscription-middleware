@@ -49,7 +49,7 @@
                 <label class="switch"><input type="checkbox" name="sub_link_apisub" <?= sub_link_apisub()?'checked':'' ?>><span class="sl"></span></label>
             </div>
             <div class="set-row">
-                <div class="set-info"><div class="set-t">Маскировать 404 под 502</div><div class="set-d">Любой ответ <b>404</b> (неизвестный путь, несуществующий UUID подписки) отдаётся как <b>502 Bad Gateway</b> с пустым телом — сервис не подаёт виду, что за ним что-то есть. Держите выключенным, если клиентам нужен настоящий 404.</div></div>
+                <div class="set-info"><div class="set-t">Обезличивать 404</div><div class="set-d">На неизвестный путь или несуществующий UUID отдаётся <b>собственный пустой 404</b> без тела и заголовков панели — probe видит обычное «страницы нет», как у любого сайта, без признаков что за фронтом что-то есть. Держите выключенным, если клиентам нужен проксируемый ответ панели.</div></div>
                 <label class="switch"><input type="checkbox" name="mask_notfound" <?= mask_notfound()?'checked':'' ?>><span class="sl"></span></label>
             </div>
             <?php $ua_keys_now = ua_hwid_keys(); $ua_key_meta = ['x-hwid' => 'идентификатор устройства (влияет на лимит)', 'x-device-os' => 'ОС устройства', 'x-ver-os' => 'версия ОС', 'x-device-model' => 'модель устройства']; ?>

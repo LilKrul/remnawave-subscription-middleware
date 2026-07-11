@@ -143,7 +143,8 @@ if ($curl_err) {
 }
 
 if (mask_notfound() && $http_code === 404) {
-    http_response_code(502);
+    header_remove('X-Powered-By');
+    http_response_code(404);
     if (!$skip_log && $short_ov) log_request($ip, $short_ov['match_value'], $path, $ua, 'error');
     die();
 }

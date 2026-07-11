@@ -78,7 +78,7 @@ function subpage_external_proxy($path, $query) {
     curl_close($ch);
 
     if ($err) { http_response_code(502); return; }
-    if (mask_notfound() && $code === 404) { http_response_code(502); return; }
+    if (mask_notfound() && $code === 404) { header_remove('X-Powered-By'); http_response_code(404); return; }
 
     http_response_code($code ?: 200);
     $unsafe = ['transfer-encoding', 'content-length', 'content-encoding', 'connection'];
