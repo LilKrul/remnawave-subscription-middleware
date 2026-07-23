@@ -209,10 +209,32 @@ function addsub_traffic_exhausted($info) {
 function addsub_fetch_body($url) {
     $url = trim((string) $url);
     if ($url === '') return [null, null];
-    $ua = $_SERVER['HTTP_USER_AGENT'] ?? 'submw';
-    $headers = ['Accept: */*', 'User-Agent: ' . $ua];
-    $dos = $_SERVER['HTTP_X_DEVICE_OS'] ?? '';
-    if ($dos !== '') $headers[] = 'x-device-os: ' . $dos;
+    $skip = [
+        'host', 'connection', 'content-length', 'content-type', 'accept-encoding',
+        'cookie', 'authorization', 'x-forwarded-for', 'x-forwarded-proto',
+        'x-remnawave-real-ip',
+    ];
+    $client_headers = [];
+    if (function_exists('getallheaders')) {
+        foreach (getallheaders() as $k => $v) $client_headers[(string) $k] = $v;
+    } else {
+        foreach ($_SERVER as $sk => $sv) {
+            if (strpos($sk, 'HTTP_') !== 0) continue;
+            $hn = str_replace(' ', '-', ucwords(strtolower(str_replace('_', ' ', substr($sk, 5)))));
+            $client_headers[$hn] = $sv;
+        }
+    }
+    $headers = [];
+    $seen_ua = false; $seen_accept = false;
+    foreach ($client_headers as $k => $v) {
+        $lk = strtolower((string) $k);
+        if (in_array($lk, $skip, true)) continue;
+        if ($lk === 'user-agent') $seen_ua = true;
+        if ($lk === 'accept')     $seen_accept = true;
+        $headers[] = $k . ': ' . $v;
+    }
+    if (!$seen_ua)     $headers[] = 'User-Agent: submw';
+    if (!$seen_accept) $headers[] = 'Accept: */*';
     if (strpos($url, 'http://') === 0) {
         $headers[] = 'x-forwarded-proto: https';
         $headers[] = 'x-forwarded-for: 127.0.0.1';
