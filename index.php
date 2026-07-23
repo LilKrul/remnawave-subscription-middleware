@@ -142,6 +142,13 @@ if ($curl_err) {
     die();
 }
 
+if (mask_notfound() && $http_code === 404) {
+    header_remove('X-Powered-By');
+    http_response_code(404);
+    if (!$skip_log && $short_ov) log_request($ip, $short_ov['match_value'], $path, $ua, 'error');
+    die();
+}
+
 $current_hwid = $_SERVER['HTTP_X_HWID'] ?? '';
 if ($current_hwid === '' && $ua_hwid_value !== '') $current_hwid = $ua_hwid_value;
 $expire_ts    = parse_expire_from_userinfo($grabbed_headers['subscription-userinfo'] ?? null);

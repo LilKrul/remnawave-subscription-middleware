@@ -209,10 +209,32 @@ function addsub_traffic_exhausted($info) {
 function addsub_fetch_body($url) {
     $url = trim((string) $url);
     if ($url === '') return [null, null];
-    $ua = $_SERVER['HTTP_USER_AGENT'] ?? 'submw';
-    $headers = ['Accept: */*', 'User-Agent: ' . $ua];
-    $dos = $_SERVER['HTTP_X_DEVICE_OS'] ?? '';
-    if ($dos !== '') $headers[] = 'x-device-os: ' . $dos;
+    $skip = [
+        'host', 'connection', 'content-length', 'content-type', 'accept-encoding',
+        'cookie', 'authorization', 'x-forwarded-for', 'x-forwarded-proto',
+        'x-remnawave-real-ip',
+    ];
+    $client_headers = [];
+    if (function_exists('getallheaders')) {
+        foreach (getallheaders() as $k => $v) $client_headers[(string) $k] = $v;
+    } else {
+        foreach ($_SERVER as $sk => $sv) {
+            if (strpos($sk, 'HTTP_') !== 0) continue;
+            $hn = str_replace(' ', '-', ucwords(strtolower(str_replace('_', ' ', substr($sk, 5)))));
+            $client_headers[$hn] = $sv;
+        }
+    }
+    $headers = [];
+    $seen_ua = false; $seen_accept = false;
+    foreach ($client_headers as $k => $v) {
+        $lk = strtolower((string) $k);
+        if (in_array($lk, $skip, true)) continue;
+        if ($lk === 'user-agent') $seen_ua = true;
+        if ($lk === 'accept')     $seen_accept = true;
+        $headers[] = $k . ': ' . $v;
+    }
+    if (!$seen_ua)     $headers[] = 'User-Agent: submw';
+    if (!$seen_accept) $headers[] = 'Accept: */*';
     if (strpos($url, 'http://') === 0) {
         $headers[] = 'x-forwarded-proto: https';
         $headers[] = 'x-forwarded-for: 127.0.0.1';
@@ -436,26 +458,45 @@ function addsub_xray_collect($ob) {
     return $nodes;
 }
 
+function addsub_xray_configs($o) {
+    if (is_object($o) && isset($o->outbounds) && is_array($o->outbounds)) return [$o];
+    $out = [];
+    if (is_array($o)) {
+        foreach ($o as $el) {
+            if (is_object($el) && isset($el->outbounds) && is_array($el->outbounds)) $out[] = $el;
+        }
+    }
+    return $out;
+}
+
 function addsub_merge_xray($a, $b) {
     $oa = json_decode((string) $a);
     $ob = json_decode((string) $b);
     if ((!is_object($oa) && !is_array($oa)) || (!is_object($ob) && !is_array($ob))) return $a;
+    if (is_array($oa)) {
+        $cfgs = addsub_xray_configs($ob);
+        if (!$cfgs) return $a;
+        $label = addsub_label();
+        $existing = [];
+        foreach ($oa as $el) if (is_object($el) && isset($el->remarks)) $existing[(string) $el->remarks] = true;
+        foreach ($cfgs as $el) {
+            $nm = trim((string) ($el->remarks ?? ''));
+            if ($label !== '') $nm = trim($label . ' ' . $nm);
+            if ($nm !== '') {
+                $base = $nm; $i = 1;
+                while (isset($existing[$nm])) { $i++; $nm = $base . ' ' . $i; }
+                $el->remarks = $nm;
+                $existing[$nm] = true;
+            }
+            $oa[] = $el;
+        }
+        $enc = json_encode($oa, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        return $enc === false ? $a : $enc;
+    }
     $nodes = addsub_xray_collect($ob);
     if (!$nodes) return $a;
-    if (is_object($oa) && isset($oa->outbounds) && is_array($oa->outbounds)) {
-        foreach ($nodes as $n) $oa->outbounds[] = $n;
-    } elseif (is_array($oa)) {
-        $done = false;
-        foreach ($oa as $el) {
-            if (is_object($el) && isset($el->outbounds) && is_array($el->outbounds)) {
-                foreach ($nodes as $n) $el->outbounds[] = $n;
-                $done = true;
-            }
-        }
-        if (!$done) return $a;
-    } else {
-        return $a;
-    }
+    if (!isset($oa->outbounds) || !is_array($oa->outbounds)) return $a;
+    foreach ($nodes as $n) $oa->outbounds[] = $n;
     $enc = json_encode($oa, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     return $enc === false ? $a : $enc;
 }
@@ -517,9 +558,11 @@ function addsub_stub_xray($a, $label) {
     if (is_object($oa) && isset($oa->outbounds) && is_array($oa->outbounds)) {
         $oa->outbounds[] = $node;
     } elseif (is_array($oa)) {
-        $done = false;
-        foreach ($oa as $el) if (is_object($el) && isset($el->outbounds) && is_array($el->outbounds)) { $el->outbounds[] = $node; $done = true; }
-        if (!$done) return $a;
+        $existing = [];
+        foreach ($oa as $el) if (is_object($el) && isset($el->remarks)) $existing[(string) $el->remarks] = true;
+        $nm = $label; $base = $nm; $i = 1;
+        while (isset($existing[$nm])) { $i++; $nm = $base . ' ' . $i; }
+        $oa[] = (object) ['remarks' => $nm, 'outbounds' => [$node]];
     } else {
         return $a;
     }
