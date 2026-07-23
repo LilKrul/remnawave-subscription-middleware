@@ -458,26 +458,45 @@ function addsub_xray_collect($ob) {
     return $nodes;
 }
 
+function addsub_xray_configs($o) {
+    if (is_object($o) && isset($o->outbounds) && is_array($o->outbounds)) return [$o];
+    $out = [];
+    if (is_array($o)) {
+        foreach ($o as $el) {
+            if (is_object($el) && isset($el->outbounds) && is_array($el->outbounds)) $out[] = $el;
+        }
+    }
+    return $out;
+}
+
 function addsub_merge_xray($a, $b) {
     $oa = json_decode((string) $a);
     $ob = json_decode((string) $b);
     if ((!is_object($oa) && !is_array($oa)) || (!is_object($ob) && !is_array($ob))) return $a;
+    if (is_array($oa)) {
+        $cfgs = addsub_xray_configs($ob);
+        if (!$cfgs) return $a;
+        $label = addsub_label();
+        $existing = [];
+        foreach ($oa as $el) if (is_object($el) && isset($el->remarks)) $existing[(string) $el->remarks] = true;
+        foreach ($cfgs as $el) {
+            $nm = trim((string) ($el->remarks ?? ''));
+            if ($label !== '') $nm = trim($label . ' ' . $nm);
+            if ($nm !== '') {
+                $base = $nm; $i = 1;
+                while (isset($existing[$nm])) { $i++; $nm = $base . ' ' . $i; }
+                $el->remarks = $nm;
+                $existing[$nm] = true;
+            }
+            $oa[] = $el;
+        }
+        $enc = json_encode($oa, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        return $enc === false ? $a : $enc;
+    }
     $nodes = addsub_xray_collect($ob);
     if (!$nodes) return $a;
-    if (is_object($oa) && isset($oa->outbounds) && is_array($oa->outbounds)) {
-        foreach ($nodes as $n) $oa->outbounds[] = $n;
-    } elseif (is_array($oa)) {
-        $done = false;
-        foreach ($oa as $el) {
-            if (is_object($el) && isset($el->outbounds) && is_array($el->outbounds)) {
-                foreach ($nodes as $n) $el->outbounds[] = $n;
-                $done = true;
-            }
-        }
-        if (!$done) return $a;
-    } else {
-        return $a;
-    }
+    if (!isset($oa->outbounds) || !is_array($oa->outbounds)) return $a;
+    foreach ($nodes as $n) $oa->outbounds[] = $n;
     $enc = json_encode($oa, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     return $enc === false ? $a : $enc;
 }
@@ -539,9 +558,11 @@ function addsub_stub_xray($a, $label) {
     if (is_object($oa) && isset($oa->outbounds) && is_array($oa->outbounds)) {
         $oa->outbounds[] = $node;
     } elseif (is_array($oa)) {
-        $done = false;
-        foreach ($oa as $el) if (is_object($el) && isset($el->outbounds) && is_array($el->outbounds)) { $el->outbounds[] = $node; $done = true; }
-        if (!$done) return $a;
+        $existing = [];
+        foreach ($oa as $el) if (is_object($el) && isset($el->remarks)) $existing[(string) $el->remarks] = true;
+        $nm = $label; $base = $nm; $i = 1;
+        while (isset($existing[$nm])) { $i++; $nm = $base . ' ' . $i; }
+        $oa[] = (object) ['remarks' => $nm, 'outbounds' => [$node]];
     } else {
         return $a;
     }
