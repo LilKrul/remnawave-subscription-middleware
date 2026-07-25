@@ -210,7 +210,7 @@ $ico_eyeoff = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke
     var NL_VIS = <?= json_encode($ico_eye) ?> + 'В логе';
     var NL_HID = <?= json_encode($ico_eyeoff) ?> + 'Скрыт';
     <?php $bh=[]; foreach($overrides as $o){ if(($o['match_type']??'')==='hwid' && ($o['reason']??'')==='blocked') $bh[]=mb_strtolower($o['match_value']); } ?>
-    var HW_BLOCKED = <?= json_encode($bh) ?>;
+    var HW_BLOCKED = <?= json_encode($bh, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
     var hwUuid='', hwLimit='', hwName='', hwDevices=[];
     function hwDate(s){if(!s)return '';var d=new Date(s);if(isNaN(d.getTime()))return '';function p(n){return(n<10?'0':'')+n;}return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate())+' '+p(d.getHours())+':'+p(d.getMinutes());}
     function hwOpen(uuid,name,limit){

@@ -41,8 +41,8 @@
         <div id="rl_pgrBot" class="pgr-bot"></div>
     </div>
     <script>
-    var RL_NAMES = <?= json_encode((object) $short2name, JSON_UNESCAPED_UNICODE) ?>;
-    var RL_HWIDS = <?= json_encode((object) $hwid2info, JSON_UNESCAPED_UNICODE) ?>;
+    var RL_NAMES = <?= json_encode((object) $short2name, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
+    var RL_HWIDS = <?= json_encode((object) $hwid2info, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
     var rlPager = window.LogPager ? LogPager({bodyId:'rlBody', topId:'rl_pgrTop', botId:'rl_pgrBot', colspan:6, storeKey:'pg_reqlog'}) : null;
     function rlEsc(s){var d=document.createElement('div');d.textContent=(s==null?'':s);return d.innerHTML;}
     function rlSumRender(s){

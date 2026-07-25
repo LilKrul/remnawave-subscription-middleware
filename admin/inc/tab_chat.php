@@ -144,7 +144,7 @@ $c_color  = chat_widget_color();
 
     <script>
     var CB_CSRF = <?= json_encode($token) ?>;
-    var CB_SESS = <?= json_encode($chat_sessions, JSON_UNESCAPED_UNICODE) ?>;
+    var CB_SESS = <?= json_encode($chat_sessions, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
     var cbCur = 0, cbLast = 0, cbPoll = null, cbSeen = {}, cbBusy = false;
     function cbEsc(s){var d=document.createElement('div');d.textContent=(s==null?'':s);return d.innerHTML;}
     function cbLocal(ep){ep=parseInt(ep,10);if(!ep)return '';var d=new Date(ep*1000);function p(n){return(n<10?'0':'')+n;}return p(d.getHours())+':'+p(d.getMinutes());}
